@@ -246,9 +246,10 @@ body {
   margin-top: 28px;
   padding-top: 18px;
   border-top: 1px solid var(--border);
-  max-width: 420px;
+  max-width: 480px;
 }
 .settings-section h2 { font-size: 14px; margin: 0 0 8px; }
+.settings-section .hint { margin: 6px 0 16px; }
 
 .delay-input {
   width: 90px;
@@ -260,6 +261,16 @@ body {
   color: var(--text);
   margin-top: 2px;
 }
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+}
+.checkbox-row input { width: 15px; height: 15px; cursor: pointer; accent-color: var(--accent); }
 
 .syntax-hint {
   margin-top: 16px;

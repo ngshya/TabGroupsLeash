@@ -49,10 +49,20 @@
     <h2>Settings</h2>
     <label class="field-label" for="startupDelayInput">Startup check delay (seconds)</label>
     <input type="number" id="startupDelayInput" class="delay-input" min="0" max="3600" step="1">
-    <p class="hint">How long to wait after the browser starts before checking every group for
-    missing or duplicate tabs — gives Chrome's own session restore time to finish first. Runs
-    once per browser startup only, never mid-session, so closing a tab on purpose is never undone
-    until the next restart.</p>
+    <p class="hint">How long to wait after the browser starts before checking every group —
+    gives Chrome's own session restore time to finish first. Runs once per browser startup only,
+    never mid-session, so closing a tab on purpose is never undone until the next restart.</p>
+
+    <label class="checkbox-row" for="closeUndeclaredInput">
+      <input type="checkbox" id="closeUndeclaredInput">
+      Close undeclared tabs during the startup check
+    </label>
+    <p class="hint">Off by default. Only applies to a group that already has at least one rule.
+    When on, any open tab in such a group whose URL doesn't match <strong>any</strong> of that
+    group's rules gets closed during the startup check — same timing as above (once per startup,
+    never mid-session). This can close tabs you opened yourself in that group without ever adding
+    a rule for them — leave it off unless you want every tab in a configured group to be
+    exactly the set you've declared.</p>
   </section>
 
   <p class="hint syntax-hint">Pattern: <code>*</code> is a wildcard (e.g. <code>*://example.com/*</code>) or

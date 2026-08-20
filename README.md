@@ -108,7 +108,13 @@ either a `pattern` (leash links), a reopen URL (guarantee presence), or both.
     duplicates from Chrome's own crash recovery) → closes the extras, keeping the
     leftmost tab.
 - Only works for **titled (synced) groups** — an untitled group's identity doesn't
-  survive a restart, so there's nothing stable to recreate it by.
+  survive a restart, so there's nothing stable to recreate it by. A group with no
+  rules at all is left alone entirely.
+- **Close undeclared tabs** (Settings, off by default): for a group that already
+  has at least one rule, also close every open tab that doesn't match *any* of that
+  group's `match` fields, on the same startup check. This can close tabs you opened
+  in that group yourself without ever writing a rule for them — leave it off unless
+  you want a configured group's tabs to always be exactly the set you've declared.
 
 ## Cross-device sync
 

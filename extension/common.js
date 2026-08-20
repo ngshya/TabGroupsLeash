@@ -41,6 +41,27 @@ function setStartupDelaySeconds(seconds) {
   });
 }
 
+// --- "Close undeclared tabs" setting, synced ---
+// Off by default (closing tabs automatically is destructive). When on, the
+// startup reconcile (background.js#reconcileGroups) also closes any open tab
+// in a group that HAS at least one rule but doesn't match ANY of that
+// group's rules — see background.js for the exact scope.
+
+const CLOSE_UNDECLARED_KEY = 'closeUndeclaredTabs';
+const DEFAULT_CLOSE_UNDECLARED_TABS = false;
+
+function getCloseUndeclaredTabs() {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get({ [CLOSE_UNDECLARED_KEY]: DEFAULT_CLOSE_UNDECLARED_TABS }, (data) => resolve(data[CLOSE_UNDECLARED_KEY]));
+  });
+}
+
+function setCloseUndeclaredTabs(value) {
+  return new Promise((resolve) => {
+    chrome.storage.sync.set({ [CLOSE_UNDECLARED_KEY]: value }, resolve);
+  });
+}
+
 // --- Theme preference, synced ---
 // 'system' (follow the browser/OS), 'light', or 'dark'. Applied via a
 // data-theme attribute on <html> — see theme.css and each page's applyTheme().

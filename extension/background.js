@@ -98,17 +98,20 @@ chrome.tabGroups.onRemoved.addListener(async (group) => {
   }
 });
 
-// --- Startup reconciliation: reopen missing "openUrl" tabs, close duplicates ---
+// --- Startup reconciliation: reopen missing "openUrl" tabs, close duplicates,
+// and (opt-in) close undeclared tabs ---
 //
 // Runs once per actual browser launch (chrome.runtime.onStartup), never
 // mid-session — closing a tab on purpose during the day is never undone by
-// this. It waits getStartupDelaySeconds() (default 15s, configurable in the
-// popup) before checking, to give Chrome's own session restore time to
+// this. It waits getStartupDelaySeconds() (default 15s, configurable on the
+// manage page) before checking, to give Chrome's own session restore time to
 // finish repopulating windows/tabs/groups first.
 //
 // Only synced (titled) groups are covered: an untitled group's local
 // groupId is meaningless after a restart, so there's nothing stable to
-// recreate it by.
+// recreate it by. Only groups that have at least one rule are touched at
+// all — a group with zero rules has nothing "declared" to check against, so
+// none of this applies to it, however "close undeclared tabs" is set.
 
 const RESTORE_ALARM_NAME = 'tgl-startup-reconcile';
 
@@ -130,19 +133,21 @@ async function reconcileGroups() {
   const titles = await getAllGroupTitles();
   if (titles.length === 0) return;
 
+  const closeUndeclared = await getCloseUndeclaredTabs();
   const allGroups = await chrome.tabGroups.query({});
   for (const title of titles) {
     const settings = await getGroupSettings(title);
-    const essentialRules = (settings.rules || []).filter((rule) => rule.openUrl);
-    if (essentialRules.length === 0) continue;
-    await reconcileGroup(title, essentialRules, allGroups);
+    const rules = settings.rules || [];
+    if (rules.length === 0) continue; // nothing declared for this group at all
+    await reconcileGroup(title, rules, allGroups, closeUndeclared);
   }
 }
 
-async function reconcileGroup(title, essentialRules, allGroups) {
+async function reconcileGroup(title, rules, allGroups, closeUndeclared) {
   const targetGroup = allGroups.find((g) => g.title === title) || null;
   const openTabs = targetGroup ? await chrome.tabs.query({ groupId: targetGroup.id }) : [];
 
+  const essentialRules = rules.filter((rule) => rule.openUrl);
   const missingRules = [];
   const idsToClose = [];
 
@@ -158,8 +163,20 @@ async function reconcileGroup(title, essentialRules, allGroups) {
     }
   }
 
+  if (closeUndeclared) {
+    // Any open tab in this group whose URL doesn't match ANY of the group's
+    // rules (not just the openUrl ones) is "undeclared". Opt-in and off by
+    // default — see getCloseUndeclaredTabs().
+    const declaredMatches = rules.map((rule) => rule.match).filter(Boolean);
+    for (const tab of openTabs) {
+      if (idsToClose.includes(tab.id)) continue; // already queued as a duplicate
+      const isDeclared = tab.url && declaredMatches.some((match) => matchesPattern(tab.url, match));
+      if (!isDeclared) idsToClose.push(tab.id);
+    }
+  }
+
   if (idsToClose.length > 0) {
-    await chrome.tabs.remove(idsToClose).catch((err) => console.warn('TabGroupsLeash: failed to close duplicate tab(s)', err));
+    await chrome.tabs.remove(idsToClose).catch((err) => console.warn('TabGroupsLeash: failed to close tab(s)', err));
   }
 
   if (missingRules.length === 0) return;
