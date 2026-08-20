@@ -79,6 +79,11 @@ first.
 - Plain, modern JavaScript (ES2020+), 2-space indentation, semicolons, `const`/`let`,
   `async`/`await`. No transpilation, no external runtime libraries.
 - User-facing strings (popup UI, alerts, README) are in English.
+- `extension/manifest.json`'s `description` must stay ≤132 characters — that's a
+  hard Chrome Web Store upload limit (not a manifest schema limit; a longer value
+  is valid JSON and loads fine unpacked, it just gets rejected at upload). The
+  release workflow checks this and fails the build if it's exceeded — don't lengthen
+  the description without checking the count.
 - `common.js` is loaded by the service worker (`importScripts`) and by both
   `popup.html` and `options.html` (`<script>` tag) — don't add anything to it that
   assumes one of those three contexts.

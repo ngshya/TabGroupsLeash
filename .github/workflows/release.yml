@@ -26,7 +26,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Validate manifest.json
-        run: jq empty extension/manifest.json
+        run: |
+          jq empty extension/manifest.json
+          desc_len=$(jq -r '.description | length' extension/manifest.json)
+          if [ "$desc_len" -gt 132 ]; then
+            echo "::error::extension/manifest.json's description is $desc_len chars — the Chrome Web Store rejects uploads over 132."
+            exit 1
+          fi
 
       - name: Check whether this version was already released
         id: check
