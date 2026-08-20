@@ -1,9 +1,14 @@
 # TabGroupsLeash
 
-A Manifest V3 Chrome extension that keeps each **tab group on a leash**: define a URL
-pattern per group (and, optionally, per page). Links you click that match the pattern
-navigate normally; links that don't match open in a new tab **outside** the group,
-leaving the original tab untouched.
+A Manifest V3 Chrome extension that keeps each **tab on a leash**: you decide, tab by
+tab, which URL pattern its clicked links must stay inside. Links that match navigate
+normally; links that don't match open in a new tab **outside** the group, leaving the
+original tab untouched.
+
+There is no single pattern for a whole group — tab groups routinely mix completely
+unrelated sites, so TabGroupsLeash leashes each tab by its own current page instead of
+guessing one pattern for the whole group. A tab you haven't configured yet just
+behaves normally.
 
 No account, no backend, no build step — just Chrome's own `storage.sync`.
 
@@ -12,9 +17,9 @@ No account, no backend, no build step — just Chrome's own `storage.sync`.
 Tab groups are great for keeping a project, a research session, or a set of docs
 together. The problem is that a single stray click on an external link drags a random
 page into the group (or worse, navigates the tab you wanted to keep). TabGroupsLeash
-intercepts link clicks inside a group and reroutes anything that falls outside the
-group's pattern into its own, ungrouped tab — so the group stays exactly what you
-built it to be.
+intercepts link clicks and, for any tab you've set a rule for, reroutes anything that
+falls outside that rule's pattern into its own, ungrouped tab — so the group stays
+exactly what you built it to be.
 
 ## Install (developer mode)
 
@@ -29,12 +34,18 @@ unzip it, and load the resulting folder the same way.
 
 - Toolbar icon → the switch at the top enables/disables the whole extension
   (default: on, synced across devices).
-- For every tab group open in the current window:
-  - **Group pattern**: the default rule for all tabs in the group, pre-filled with
-    the group's domain.
-  - **Page-specific rules**: pairs of "if the tab's URL matches X, then links must
-    match Y". Add them manually (`+`) or with one click via **Add a rule from an
-    open tab**.
+- Opening the popup shows the rules for **the group of the tab you're currently on**.
+  If the window has more than one tab group, a row of chips above lets you switch to
+  any other group's rules.
+- Each group's rules are pairs of "if a tab's URL matches X, then links clicked in it
+  must match Y" — add one manually (`+`) or with one click via **Add a rule from an
+  open tab**, which lists every open tab in that group that doesn't have a rule yet
+  (the tab you're currently on is listed first, marked "current tab").
+- Every save (editing a rule, adding one, deleting one) flashes a **Saved ✓**
+  next to the group title so you know it went through; a failed save (e.g. a
+  `storage.sync` quota error) shows the reason there instead.
+- A tab with no matching rule yet isn't leashed — its links behave normally until
+  you add one.
 
 ### Pattern syntax
 
@@ -42,6 +53,10 @@ unzip it, and load the resulting folder the same way.
   `https://example.com/blog/*` restricts it to a subsection.
 - Prefix a pattern with `regex:` for advanced matching, e.g.
   `regex:^https://example\.com/(blog|docs)/`.
+- **Add a rule from an open tab** ("Use this page") always starts both the match and
+  the pattern from the page's full path — every `/level` it has — with the query
+  string and fragment already stripped (`https://example.com/search?q=x#top` becomes
+  `*://example.com/search*`). Narrow or widen it from there.
 
 ### Click behavior
 
@@ -69,8 +84,8 @@ navigate a tab inside a group, on any device, the extension:
 2. downloads the rules saved for that title from `storage.sync`,
 3. compares the tab's current URL against each rule's "match" field,
 4. uses the pattern from whichever rule matches (the most specific one, if several
-   do) to validate links clicked in that tab; if no rule matches, it falls back to
-   the group's default pattern.
+   do) to validate links clicked in that tab; if no rule matches, that tab is left
+   unleashed — links open normally, exactly like a tab outside any group.
 
 That means a rule created on one device automatically applies to any tab, on any
 device, whose current page falls inside the saved "match" pattern — no need to
@@ -103,7 +118,7 @@ extension/         The extension itself — load this folder as "unpacked"
   manifest.json     Manifest V3 configuration
   background.js     Service worker: tab open/move logic
   content.js        Intercepts link clicks on the page
-  popup.html/css/js UI to toggle the extension and edit patterns/rules
+  popup.html/css/js UI to toggle the extension and edit each group's rules
   common.js         Shared utilities (sync/local storage, pattern matching)
   icons/            Toolbar and store icons
 .github/workflows/  CI: packages extension/ into a zip on every tagged release

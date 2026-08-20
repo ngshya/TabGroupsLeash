@@ -22,12 +22,17 @@ function setEnabled(value) {
 }
 
 // --- Per-group settings, indexed by TITLE (a stable cross-device key) ---
-// Shape: { pattern: "*://example.com/*", rules: [{ match, pattern }, ...] }
+// Shape: { rules: [{ match, pattern }, ...] }
+//
+// There is no group-wide default pattern: every tab is leashed individually,
+// by matching its current URL against each rule's "match" field. A tab whose
+// URL doesn't match any rule is left alone (normal browser behavior) until a
+// rule is added for it — see resolvePatternForTab below.
 
 function getGroupSettings(title) {
   const key = groupKey(title);
   return new Promise((resolve) => {
-    chrome.storage.sync.get({ [key]: { pattern: null, rules: [] } }, (data) => resolve(data[key]));
+    chrome.storage.sync.get({ [key]: { rules: [] } }, (data) => resolve(data[key]));
   });
 }
 
@@ -54,8 +59,10 @@ async function getAllGroupTitles() {
 }
 
 // --- Local-only fallback for untitled groups (not reliably syncable) ---
+// Same per-tab-rules shape as synced group settings, just keyed by the
+// browser-local numeric groupId instead of a title.
 
-const LOCAL_DEFAULTS = { untitledGroups: {} }; // { [groupId]: { pattern } }
+const LOCAL_DEFAULTS = { untitledGroups: {} }; // { [groupId]: { rules: [{ match, pattern }, ...] } }
 
 function getLocalFallback() {
   return new Promise((resolve) => chrome.storage.local.get(LOCAL_DEFAULTS, resolve));
@@ -85,17 +92,10 @@ function matchesPattern(url, pattern) {
   }
 }
 
-// Default pattern = the page's domain, e.g. *://example.com/*
-function defaultPatternForUrl(url) {
-  try {
-    const u = new URL(url);
-    return `*://${u.hostname}/*`;
-  } catch (e) {
-    return '*';
-  }
-}
-
-// Default "match" for a per-page rule = domain + current path
+// Suggested "match"/starting pattern for a specific page: domain + full path,
+// deliberately keeping every path segment ("levels") but dropping the query
+// string and fragment — new URL(...).pathname never includes "?..." or "#...".
+// This is what "Use this page" seeds both the rule's match and its pattern with.
 function defaultMatchForUrl(url) {
   try {
     const u = new URL(url);
@@ -119,10 +119,10 @@ function findRuleForTabUrl(groupSettings, tabUrl) {
 }
 
 // Resolves the pattern to apply to links clicked in a tab, given the tab's
-// current URL and its group's (synced) settings.
+// current URL and its group's (synced, or local-fallback) settings. Returns
+// null when no rule covers this tab yet — callers should treat that as
+// "unleashed" rather than "blocks everything".
 function resolvePatternForTab(groupSettings, tabUrl) {
   const rule = findRuleForTabUrl(groupSettings, tabUrl);
-  if (rule) return rule.pattern;
-  if (groupSettings && groupSettings.pattern) return groupSettings.pattern;
-  return defaultPatternForUrl(tabUrl);
+  return rule ? rule.pattern : null;
 }
