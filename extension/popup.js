@@ -1,4 +1,7 @@
 const enabledToggle = document.getElementById('enabledToggle');
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsPanel = document.getElementById('settingsPanel');
+const startupDelayInput = document.getElementById('startupDelayInput');
 const groupSwitcher = document.getElementById('groupSwitcher');
 const emptyState = document.getElementById('emptyState');
 const groupPanel = document.getElementById('groupPanel');
@@ -7,6 +10,7 @@ const panelTitle = document.getElementById('panelTitle');
 const saveIndicator = document.getElementById('saveIndicator');
 const clearGroupBtn = document.getElementById('clearGroupBtn');
 const untitledWarning = document.getElementById('untitledWarning');
+const notOpenHint = document.getElementById('notOpenHint');
 const addRuleBtn = document.getElementById('addRuleBtn');
 const rulesEmptyHint = document.getElementById('rulesEmptyHint');
 const ruleList = document.getElementById('ruleList');
@@ -22,35 +26,68 @@ const GROUP_COLORS = {
   green: '#4ae28c', pink: '#e24aa8', purple: '#a04ae2', cyan: '#4ae2e2', orange: '#e28c4a'
 };
 
-// entries: [{ group, tabs, isSynced, settings? }], byId: Map<groupId, entry>
-const state = { entries: [], byId: new Map(), selectedGroupId: null, activeTabId: null };
+// entries: [{ key, group, tabs, isSynced, isOpen, settings? }], byId: Map<key, entry>
+// key is the numeric chrome.tabGroups id for a group open in this window, or
+// "elsewhere:<title>" for a synced group that has saved rules but isn't open
+// here right now (closed, or open in a different window/device).
+const state = { entries: [], byId: new Map(), selectedKey: null, activeTabId: null };
 
 let saveIndicatorTimer = null;
 
 async function init() {
   enabledToggle.checked = await getEnabled();
   enabledToggle.addEventListener('change', () => setEnabled(enabledToggle.checked));
+
+  settingsBtn.addEventListener('click', () => {
+    settingsPanel.hidden = !settingsPanel.hidden;
+  });
+  startupDelayInput.value = await getStartupDelaySeconds();
+  startupDelayInput.addEventListener('change', async () => {
+    let value = Math.round(Number(startupDelayInput.value));
+    if (!Number.isFinite(value) || value < 0) value = DEFAULT_STARTUP_DELAY_SECONDS;
+    value = Math.min(value, 3600);
+    startupDelayInput.value = value;
+    await setStartupDelaySeconds(value);
+  });
+
   await loadAndRender();
 }
 
-// Loads every tab group in this window (plus the currently active tab, to
-// pick a sensible default and to flag it in "Add a rule from an open tab"),
-// then opens the group the active tab belongs to.
+// Loads every tab group open in this window, plus every OTHER titled group
+// that has saved rules in storage.sync (closed, or open elsewhere), so you
+// can always find and edit a group's rules from the popup even when that
+// group isn't in front of you right now. Then opens the active tab's group.
 async function loadAndRender() {
   const win = await chrome.windows.getCurrent();
   const groups = await chrome.tabGroups.query({ windowId: win.id });
-  const entries = await Promise.all(groups.map(async (group) => ({
+  const openEntries = await Promise.all(groups.map(async (group) => ({
+    key: group.id,
     group,
     tabs: await chrome.tabs.query({ groupId: group.id }),
-    isSynced: !!group.title
+    isSynced: !!group.title,
+    isOpen: true
   })));
+
+  const openTitles = new Set(openEntries.filter((e) => e.isSynced).map((e) => e.group.title));
+  const allTitles = await getAllGroupTitles();
+  const elsewhereEntries = allTitles
+    .filter((title) => !openTitles.has(title))
+    .sort((a, b) => a.localeCompare(b))
+    .map((title) => ({
+      key: `elsewhere:${title}`,
+      group: { title, color: null },
+      tabs: [],
+      isSynced: true,
+      isOpen: false
+    }));
+
   const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-  state.entries = entries;
-  state.byId = new Map(entries.map((e) => [e.group.id, e]));
+  state.entries = [...openEntries, ...elsewhereEntries];
+  state.byId = new Map(state.entries.map((e) => [e.key, e]));
   state.activeTabId = activeTab?.id ?? null;
 
-  if (entries.length === 0) {
+  if (state.entries.length === 0) {
     emptyState.hidden = false;
     groupSwitcher.hidden = true;
     groupPanel.hidden = true;
@@ -58,14 +95,15 @@ async function loadAndRender() {
   }
   emptyState.hidden = true;
 
-  const preferredId = activeTab && activeTab.groupId !== -1 && state.byId.has(activeTab.groupId)
-    ? activeTab.groupId
-    : entries[0].group.id;
+  const activeOpenEntry = activeTab && activeTab.groupId !== -1
+    ? openEntries.find((e) => e.group.id === activeTab.groupId)
+    : null;
+  const preferredKey = activeOpenEntry ? activeOpenEntry.key : state.entries[0].key;
 
-  await selectGroup(preferredId);
+  await selectGroup(preferredKey);
 }
 
-function renderSwitcher(selectedId) {
+function renderSwitcher(selectedKey) {
   groupSwitcher.innerHTML = '';
   if (state.entries.length <= 1) {
     groupSwitcher.hidden = true;
@@ -74,30 +112,39 @@ function renderSwitcher(selectedId) {
   groupSwitcher.hidden = false;
   for (const entry of state.entries) {
     const node = switcherChipTemplate.content.cloneNode(true);
-    node.querySelector('.dot').style.background = GROUP_COLORS[entry.group.color] || '#999';
-    node.querySelector('.chip-title').textContent = entry.group.title || '(untitled)';
+    const dot = node.querySelector('.dot');
     const chip = node.querySelector('.switcher-chip');
-    chip.classList.toggle('selected', entry.group.id === selectedId);
-    chip.title = entry.group.title || '(untitled group)';
-    chip.addEventListener('click', () => selectGroup(entry.group.id));
+    node.querySelector('.chip-title').textContent = entry.group.title || '(untitled)';
+    if (entry.isOpen) {
+      dot.style.background = GROUP_COLORS[entry.group.color] || '#999';
+      chip.title = entry.group.title || '(untitled group)';
+    } else {
+      dot.classList.add('unknown');
+      chip.classList.add('not-open');
+      chip.title = `"${entry.group.title}" isn't open in this window right now — it still has saved rules`;
+    }
+    chip.classList.toggle('selected', entry.key === selectedKey);
+    chip.addEventListener('click', () => selectGroup(entry.key));
     groupSwitcher.appendChild(node);
   }
 }
 
-async function selectGroup(groupId) {
-  const entry = state.byId.get(groupId);
+async function selectGroup(key) {
+  const entry = state.byId.get(key);
   if (!entry) return;
-  state.selectedGroupId = groupId;
-  renderSwitcher(groupId);
+  state.selectedKey = key;
+  renderSwitcher(key);
   groupPanel.hidden = false;
   await openGroup(entry);
 }
 
 // Loads (or reloads) one group's rules from storage and paints the whole panel.
 async function openGroup(entry) {
-  panelDot.style.background = GROUP_COLORS[entry.group.color] || '#999';
+  panelDot.style.background = entry.isOpen ? (GROUP_COLORS[entry.group.color] || '#999') : 'transparent';
+  panelDot.classList.toggle('unknown', !entry.isOpen);
   panelTitle.textContent = entry.group.title || '(untitled)';
   untitledWarning.hidden = entry.isSynced;
+  notOpenHint.hidden = entry.isOpen;
   clearIndicator();
 
   entry.settings = entry.isSynced
@@ -118,9 +165,20 @@ async function openGroup(entry) {
     }
     entry.settings = { rules: [] };
     showSaved();
-    refreshLists(entry);
+    await afterMutation(entry);
   };
 
+  refreshLists(entry);
+}
+
+// A group that isn't open in this window only stays in the switcher while it
+// has rules — once its last rule is gone, drop it by reloading the whole
+// list instead of just repainting the (now pointless) empty panel.
+async function afterMutation(entry) {
+  if (!entry.isOpen && (entry.settings?.rules || []).length === 0) {
+    await loadAndRender();
+    return;
+  }
   refreshLists(entry);
 }
 
@@ -150,9 +208,13 @@ function refreshLists(entry) {
     node.querySelector('.quick-add-title').textContent = (tab.title || tab.url) + (isCurrent ? ' — current tab' : '');
     if (isCurrent) row.classList.add('current');
     node.querySelector('.quick-add-btn').addEventListener('click', async () => {
-      const nextRules = [...(entry.settings.rules || []), { match: suggestedMatch, pattern: suggestedMatch }];
+      // Prefill openUrl with this tab's exact live URL (query string and all)
+      // so "Use this page" also protects it against being closed by accident,
+      // with no extra step — remove it from the new rule afterward if you
+      // don't want that for this particular page.
+      const nextRules = [...(entry.settings.rules || []), { match: suggestedMatch, pattern: suggestedMatch, openUrl: tab.url }];
       await persistRules(entry, nextRules);
-      refreshLists(entry);
+      await afterMutation(entry);
     });
     quickAddList.appendChild(node);
   }
@@ -162,41 +224,74 @@ function refreshLists(entry) {
 function buildRuleRow(entry, rule) {
   const node = ruleTemplate.content.cloneNode(true);
   const li = node.querySelector('.rule-row');
+  const openUrlInput = node.querySelector('.rule-open-url');
   const matchInput = node.querySelector('.rule-match');
   const patternInput = node.querySelector('.rule-pattern');
   const deleteBtn = node.querySelector('.delete-rule');
 
+  openUrlInput.value = rule.openUrl || '';
   matchInput.value = rule.match || '';
   patternInput.value = rule.pattern || '';
 
-  const onEdit = async () => {
-    await persistRules(entry, collectRulesFromDom());
-    refreshLists(entry);
-  };
+  const onEdit = () => saveRulesFromDom(entry);
+  openUrlInput.addEventListener('change', onEdit);
   matchInput.addEventListener('change', onEdit);
   patternInput.addEventListener('change', onEdit);
   deleteBtn.addEventListener('click', async () => {
     li.remove();
-    await persistRules(entry, collectRulesFromDom());
-    refreshLists(entry);
+    await saveRulesFromDom(entry);
   });
 
   return node;
 }
 
+function isValidOpenUrl(value) {
+  if (!value) return true; // empty is fine: this rule just has no restore URL
+  try {
+    const u = new URL(value);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch (e) {
+    return false;
+  }
+}
+
 function collectRulesFromDom() {
   return Array.from(ruleList.querySelectorAll('.rule-row'))
     .map((row) => ({
+      openUrl: row.querySelector('.rule-open-url').value.trim(),
       match: row.querySelector('.rule-match').value.trim(),
       pattern: row.querySelector('.rule-pattern').value.trim()
     }))
-    .filter((r) => r.match && r.pattern);
+    // A rule needs at least a page to identify it (match), plus either
+    // something to leash links to (pattern) or a URL to restore (openUrl).
+    .filter((r) => r.match && (r.pattern || r.openUrl));
+}
+
+// Validates every rule currently in the DOM, then persists and refreshes —
+// shared by every edit/delete handler so a typo in one row's URL blocks
+// that save with a clear reason instead of silently storing junk that would
+// only fail later, unattended, during a startup reconcile.
+async function saveRulesFromDom(entry) {
+  const rules = collectRulesFromDom();
+  const invalid = rules.find((r) => r.openUrl && !isValidOpenUrl(r.openUrl));
+  if (invalid) {
+    showError(`"${invalid.openUrl}" isn't a valid http(s) URL`);
+    return;
+  }
+  await persistRules(entry, rules);
+  await afterMutation(entry);
 }
 
 async function persistRules(entry, rules) {
   try {
     if (entry.isSynced) {
-      await setGroupSettings(entry.group.title, { rules });
+      if (rules.length === 0 && !entry.isOpen) {
+        // Not open here, and now ruleless: nothing left to identify it by,
+        // so drop the storage key instead of leaving an empty orphan behind.
+        await deleteGroupSettings(entry.group.title);
+      } else {
+        await setGroupSettings(entry.group.title, { rules });
+      }
     } else {
       const local = await getLocalFallback();
       local.untitledGroups[entry.group.id] = { rules };
@@ -233,7 +328,7 @@ function showError(message) {
 // this browser and isn't affected by sync.
 chrome.storage.onChanged.addListener(async (changes, area) => {
   if (area !== 'sync') return;
-  const entry = state.byId.get(state.selectedGroupId);
+  const entry = state.byId.get(state.selectedKey);
   if (!entry || !entry.isSynced) return;
   entry.settings = await getGroupSettings(entry.group.title);
   refreshLists(entry);

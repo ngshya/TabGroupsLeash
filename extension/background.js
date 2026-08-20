@@ -97,3 +97,101 @@ chrome.tabGroups.onRemoved.addListener(async (group) => {
     await setLocalFallback({ untitledGroups: local.untitledGroups });
   }
 });
+
+// --- Startup reconciliation: reopen missing "openUrl" tabs, close duplicates ---
+//
+// Runs once per actual browser launch (chrome.runtime.onStartup), never
+// mid-session — closing a tab on purpose during the day is never undone by
+// this. It waits getStartupDelaySeconds() (default 15s, configurable in the
+// popup) before checking, to give Chrome's own session restore time to
+// finish repopulating windows/tabs/groups first.
+//
+// Only synced (titled) groups are covered: an untitled group's local
+// groupId is meaningless after a restart, so there's nothing stable to
+// recreate it by.
+
+const RESTORE_ALARM_NAME = 'tgl-startup-reconcile';
+
+chrome.runtime.onStartup.addListener(async () => {
+  const seconds = await getStartupDelaySeconds();
+  const delayInMinutes = Math.max(Number(seconds) || 0, 1) / 60;
+  chrome.alarms.create(RESTORE_ALARM_NAME, { delayInMinutes });
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name !== RESTORE_ALARM_NAME) return;
+  reconcileGroups().catch((err) => console.error('TabGroupsLeash: startup reconcile failed', err));
+});
+
+async function reconcileGroups() {
+  const enabled = await getEnabled();
+  if (!enabled) return;
+
+  const titles = await getAllGroupTitles();
+  if (titles.length === 0) return;
+
+  const allGroups = await chrome.tabGroups.query({});
+  for (const title of titles) {
+    const settings = await getGroupSettings(title);
+    const essentialRules = (settings.rules || []).filter((rule) => rule.openUrl);
+    if (essentialRules.length === 0) continue;
+    await reconcileGroup(title, essentialRules, allGroups);
+  }
+}
+
+async function reconcileGroup(title, essentialRules, allGroups) {
+  const targetGroup = allGroups.find((g) => g.title === title) || null;
+  const openTabs = targetGroup ? await chrome.tabs.query({ groupId: targetGroup.id }) : [];
+
+  const missingRules = [];
+  const idsToClose = [];
+
+  for (const rule of essentialRules) {
+    const matchingTabs = openTabs.filter((tab) => tab.url && matchesPattern(tab.url, rule.match));
+    if (matchingTabs.length === 0) {
+      missingRules.push(rule);
+    } else if (matchingTabs.length > 1) {
+      // More than one open tab covers the same rule (e.g. Chrome's own crash
+      // recovery restored duplicates): keep the leftmost, close the rest.
+      matchingTabs.sort((a, b) => a.index - b.index);
+      idsToClose.push(...matchingTabs.slice(1).map((t) => t.id));
+    }
+  }
+
+  if (idsToClose.length > 0) {
+    await chrome.tabs.remove(idsToClose).catch((err) => console.warn('TabGroupsLeash: failed to close duplicate tab(s)', err));
+  }
+
+  if (missingRules.length === 0) return;
+
+  let windowId = targetGroup?.windowId;
+  if (windowId === undefined) {
+    const lastFocused = await chrome.windows.getLastFocused({ windowTypes: ['normal'] }).catch(() => null);
+    windowId = lastFocused?.id;
+  }
+  if (windowId === undefined) {
+    const created = await chrome.windows.create({});
+    windowId = created.id;
+  }
+
+  const newTabIds = [];
+  for (const rule of missingRules) {
+    try {
+      const created = await chrome.tabs.create({ url: rule.openUrl, windowId, active: false });
+      newTabIds.push(created.id);
+    } catch (err) {
+      console.warn(`TabGroupsLeash: couldn't open "${rule.openUrl}"`, err);
+    }
+  }
+  if (newTabIds.length === 0) return;
+
+  if (targetGroup) {
+    await chrome.tabs.group({ tabIds: newTabIds, groupId: targetGroup.id });
+  } else {
+    // The group itself doesn't exist anywhere right now: recreate it from
+    // the tabs we just opened. Its color isn't stored, so Chrome assigns a
+    // default one.
+    const newGroupId = await chrome.tabs.group({ tabIds: newTabIds, createProperties: { windowId } });
+    await chrome.tabGroups.update(newGroupId, { title });
+  }
+}

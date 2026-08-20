@@ -24,6 +24,29 @@ h1 {
   margin: 0;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-panel {
+  background: #fff;
+  border: 1px solid #e4e7ec;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.delay-input {
+  width: 70px;
+  padding: 5px 7px;
+  border: 1px solid #d5d9e0;
+  border-radius: 5px;
+  font-size: 12px;
+  margin-top: 2px;
+}
+
 .switch {
   position: relative;
   display: inline-block;
@@ -84,6 +107,20 @@ input:checked + .slider::before { transform: translateX(18px); }
   background: #eaf2fc;
   color: #1f2430;
   font-weight: 600;
+}
+
+/* Groups that have saved rules but aren't open in this window right now */
+.switcher-chip.not-open {
+  border-style: dashed;
+  color: #9aa1b1;
+}
+.switcher-chip.not-open.selected {
+  border-color: #4a90e2;
+  color: #1f2430;
+}
+.dot.unknown {
+  background: transparent;
+  border: 1.5px solid #b7bdc9;
 }
 
 /* --- Active group panel --- */
@@ -161,6 +198,16 @@ input:checked + .slider::before { transform: translateX(18px); }
   margin: 0 0 6px;
 }
 
+.not-open-hint {
+  font-size: 11px;
+  color: #4d5566;
+  background: #f0f3f9;
+  border: 1px dashed #c7ccd6;
+  border-radius: 5px;
+  padding: 5px 7px;
+  margin: 0 0 6px;
+}
+
 .rules-header {
   display: flex;
   align-items: center;
@@ -188,14 +235,34 @@ input:checked + .slider::before { transform: translateX(18px); }
 
 .rule-row {
   display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 7px;
+  border: 1px solid #e4e7ec;
+  border-radius: 6px;
+  background: #fbfbfc;
+  margin-bottom: 6px;
+}
+
+.rule-row-top {
+  display: flex;
   align-items: center;
-  gap: 4px;
-  margin-bottom: 5px;
+  gap: 6px;
+}
+.rule-row-top .mini-label { flex: 1; min-width: 0; }
+
+.mini-label {
+  font-size: 9.5px;
+  color: #9aa1b1;
+  text-transform: uppercase;
+  letter-spacing: .02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .rule-row input {
-  flex: 1;
-  min-width: 0;
+  width: 100%;
   padding: 5px 7px;
   border: 1px solid #d5d9e0;
   border-radius: 5px;
