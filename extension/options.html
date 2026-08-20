@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TabGroupsLeash — Manage rules</title>
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <header class="page-header">
+    <h1>TabGroupsLeash</h1>
+    <p class="page-subtitle">Manage every group's rules from one page.</p>
+  </header>
+
+  <div class="layout">
+    <nav id="groupNav" class="group-nav">
+      <p id="navEmpty" class="empty" hidden>No tab groups yet.</p>
+    </nav>
+
+    <main id="mainPanel" class="main-panel">
+      <p id="noSelectionState" class="empty" hidden>Select a group on the left.</p>
+
+      <section id="groupPanel" class="group-panel" hidden>
+        <div class="group-header">
+          <span class="dot" id="panelDot"></span>
+          <span class="group-title" id="panelTitle"></span>
+          <span class="save-indicator" id="saveIndicator" aria-live="polite"></span>
+          <button class="icon-btn" id="clearGroupBtn" title="Clear this group's rules">✕</button>
+        </div>
+        <p class="untitled-warning" id="untitledWarning" hidden>Give this group a title to sync its rules across devices. For now they're saved on this browser only.</p>
+        <p class="not-open-hint" id="notOpenHint" hidden>This group isn't open in this window right now (closed, or open in another window/device) — its rules still apply wherever a tab in a group with this title is open.</p>
+
+        <div class="rules-header">
+          <label class="field-label">Rules for this group</label>
+          <button class="icon-btn" id="addRuleBtn" title="Add a manual rule">+</button>
+        </div>
+        <p class="rules-empty-hint" id="rulesEmptyHint" hidden>No rules yet — every link in this group's tabs opens normally, and nothing reopens on startup, until you add one below or from an open tab.</p>
+        <ul class="rule-list" id="ruleList"></ul>
+
+        <div class="quick-add" id="quickAddBox" hidden>
+          <label class="field-label">Add a rule from an open tab</label>
+          <ul class="quick-add-list" id="quickAddList"></ul>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <section class="settings-section">
+    <h2>Settings</h2>
+    <label class="field-label" for="startupDelayInput">Startup check delay (seconds)</label>
+    <input type="number" id="startupDelayInput" class="delay-input" min="0" max="3600" step="1">
+    <p class="hint">How long to wait after the browser starts before checking every group for
+    missing or duplicate tabs — gives Chrome's own session restore time to finish first. Runs
+    once per browser startup only, never mid-session, so closing a tab on purpose is never undone
+    until the next restart.</p>
+  </section>
+
+  <p class="hint syntax-hint">Pattern: <code>*</code> is a wildcard (e.g. <code>*://example.com/*</code>) or
+  <code>regex:...</code>. Rules for <strong>untitled</strong> groups stay on this device only, and
+  can't reopen on startup (there's no title to find the group by after a restart).</p>
+
+  <footer>
+    <p class="version-line">TabGroupsLeash <span id="versionLabel"></span></p>
+  </footer>
+
+  <template id="groupNavItemTemplate">
+    <button type="button" class="nav-item">
+      <span class="dot"></span>
+      <span class="nav-item-title"></span>
+      <span class="nav-item-count"></span>
+    </button>
+  </template>
+
+  <template id="ruleTemplate">
+    <li class="rule-row">
+      <div class="rule-row-top">
+        <span class="mini-label">Reopen at this URL if missing (optional)</span>
+        <button class="icon-btn delete-rule" title="Remove rule">✕</button>
+      </div>
+      <input type="text" class="rule-open-url" placeholder="https://example.com/dashboard">
+      <span class="mini-label">If this tab's URL matches</span>
+      <input type="text" class="rule-match" placeholder="*://example.com/*">
+      <span class="mini-label">Links clicked in it must match (optional)</span>
+      <input type="text" class="rule-pattern" placeholder="*://example.com/*">
+    </li>
+  </template>
+
+  <template id="quickAddTemplate">
+    <li class="quick-add-row">
+      <span class="quick-add-title"></span>
+      <button class="quick-add-btn">Use this page</button>
+    </li>
+  </template>
+
+  <script src="common.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

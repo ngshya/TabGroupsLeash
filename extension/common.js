@@ -41,6 +41,35 @@ function setStartupDelaySeconds(seconds) {
   });
 }
 
+// --- Theme preference, synced ---
+// 'system' (follow the browser/OS), 'light', or 'dark'. Applied via a
+// data-theme attribute on <html> — see theme.css and each page's applyTheme().
+
+const THEME_KEY = 'theme';
+const DEFAULT_THEME = 'system';
+
+function getThemePreference() {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get({ [THEME_KEY]: DEFAULT_THEME }, (data) => resolve(data[THEME_KEY]));
+  });
+}
+
+function setThemePreference(theme) {
+  return new Promise((resolve) => {
+    chrome.storage.sync.set({ [THEME_KEY]: theme }, resolve);
+  });
+}
+
+// Applies the theme to the current page. 'system' clears the override and
+// lets theme.css's prefers-color-scheme media query decide.
+function applyTheme(theme) {
+  if (theme === 'light' || theme === 'dark') {
+    document.documentElement.setAttribute('data-theme', theme);
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+  }
+}
+
 // --- Per-group settings, indexed by TITLE (a stable cross-device key) ---
 // Shape: { rules: [{ match, pattern, openUrl }, ...] }
 //

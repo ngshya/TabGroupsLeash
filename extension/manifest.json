@@ -1,13 +1,14 @@
 {
   "manifest_version": 3,
   "name": "TabGroupsLeash",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Keeps clicked links inside the URL pattern you set for each tab, and reopens tabs that go missing on browser startup; links that don't match open in a new tab outside the group, leaving the original page untouched.",
   "permissions": ["tabGroups", "tabs", "storage", "alarms"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"
   },
+  "options_page": "options.html",
   "content_scripts": [
     {
       "matches": ["<all_urls>"],

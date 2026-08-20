@@ -45,7 +45,7 @@ jobs:
       - name: Check required files
         if: steps.check.outputs.should_release == 'true'
         run: |
-          for f in manifest.json background.js content.js common.js popup.html popup.css popup.js icons/icon16.png icons/icon48.png icons/icon128.png; do
+          for f in manifest.json background.js content.js common.js theme.css popup.html popup.css popup.js options.html options.css options.js icons/icon16.png icons/icon48.png icons/icon128.png; do
             if [ ! -f "extension/$f" ]; then
               echo "::error::Missing extension/$f"
               exit 1
