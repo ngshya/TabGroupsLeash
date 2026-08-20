@@ -1,110 +1,165 @@
-const groupsContainer = document.getElementById('groupsContainer');
+const enabledToggle = document.getElementById('enabledToggle');
+const groupSwitcher = document.getElementById('groupSwitcher');
 const emptyState = document.getElementById('emptyState');
-const groupTemplate = document.getElementById('groupTemplate');
+const groupPanel = document.getElementById('groupPanel');
+const panelDot = document.getElementById('panelDot');
+const panelTitle = document.getElementById('panelTitle');
+const saveIndicator = document.getElementById('saveIndicator');
+const clearGroupBtn = document.getElementById('clearGroupBtn');
+const untitledWarning = document.getElementById('untitledWarning');
+const addRuleBtn = document.getElementById('addRuleBtn');
+const rulesEmptyHint = document.getElementById('rulesEmptyHint');
+const ruleList = document.getElementById('ruleList');
+const quickAddBox = document.getElementById('quickAddBox');
+const quickAddList = document.getElementById('quickAddList');
+
+const switcherChipTemplate = document.getElementById('switcherChipTemplate');
 const ruleTemplate = document.getElementById('ruleTemplate');
 const quickAddTemplate = document.getElementById('quickAddTemplate');
-const enabledToggle = document.getElementById('enabledToggle');
 
 const GROUP_COLORS = {
   grey: '#8f9bb3', blue: '#4a90e2', red: '#e25c5c', yellow: '#e2c94a',
   green: '#4ae28c', pink: '#e24aa8', purple: '#a04ae2', cyan: '#4ae2e2', orange: '#e28c4a'
 };
 
+// entries: [{ group, tabs, isSynced, settings? }], byId: Map<groupId, entry>
+const state = { entries: [], byId: new Map(), selectedGroupId: null, activeTabId: null };
+
+let saveIndicatorTimer = null;
+
 async function init() {
   enabledToggle.checked = await getEnabled();
   enabledToggle.addEventListener('change', () => setEnabled(enabledToggle.checked));
-  await renderGroups();
+  await loadAndRender();
 }
 
-async function renderGroups() {
+// Loads every tab group in this window (plus the currently active tab, to
+// pick a sensible default and to flag it in "Add a rule from an open tab"),
+// then opens the group the active tab belongs to.
+async function loadAndRender() {
   const win = await chrome.windows.getCurrent();
   const groups = await chrome.tabGroups.query({ windowId: win.id });
+  const entries = await Promise.all(groups.map(async (group) => ({
+    group,
+    tabs: await chrome.tabs.query({ groupId: group.id }),
+    isSynced: !!group.title
+  })));
+  const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-  groupsContainer.innerHTML = '';
-  if (groups.length === 0) {
-    groupsContainer.appendChild(emptyState);
+  state.entries = entries;
+  state.byId = new Map(entries.map((e) => [e.group.id, e]));
+  state.activeTabId = activeTab?.id ?? null;
+
+  if (entries.length === 0) {
+    emptyState.hidden = false;
+    groupSwitcher.hidden = true;
+    groupPanel.hidden = true;
     return;
   }
+  emptyState.hidden = true;
 
-  for (const group of groups) {
-    const tabs = await chrome.tabs.query({ groupId: group.id });
-    const node = renderGroup(group, tabs);
-    groupsContainer.appendChild(node);
+  const preferredId = activeTab && activeTab.groupId !== -1 && state.byId.has(activeTab.groupId)
+    ? activeTab.groupId
+    : entries[0].group.id;
+
+  await selectGroup(preferredId);
+}
+
+function renderSwitcher(selectedId) {
+  groupSwitcher.innerHTML = '';
+  if (state.entries.length <= 1) {
+    groupSwitcher.hidden = true;
+    return;
+  }
+  groupSwitcher.hidden = false;
+  for (const entry of state.entries) {
+    const node = switcherChipTemplate.content.cloneNode(true);
+    node.querySelector('.dot').style.background = GROUP_COLORS[entry.group.color] || '#999';
+    node.querySelector('.chip-title').textContent = entry.group.title || '(untitled)';
+    const chip = node.querySelector('.switcher-chip');
+    chip.classList.toggle('selected', entry.group.id === selectedId);
+    chip.title = entry.group.title || '(untitled group)';
+    chip.addEventListener('click', () => selectGroup(entry.group.id));
+    groupSwitcher.appendChild(node);
   }
 }
 
-function renderGroup(group, tabs) {
-  const node = groupTemplate.content.cloneNode(true);
-  const section = node.querySelector('.group');
-  node.querySelector('.dot').style.background = GROUP_COLORS[group.color] || '#999';
-  node.querySelector('.group-title').textContent = group.title || '(untitled)';
-
-  const isSynced = !!group.title;
-  if (!isSynced) node.querySelector('.untitled-warning').hidden = false;
-
-  const groupPatternInput = node.querySelector('.group-pattern');
-  const ruleList = node.querySelector('.rule-list');
-  const deleteGroupBtn = node.querySelector('.delete-group');
-  const addRuleBtn = node.querySelector('.add-rule');
-  const quickAddBox = node.querySelector('.quick-add');
-  const quickAddList = node.querySelector('.quick-add-list');
-
-  const groupDefault = defaultPatternForUrl(tabs[0]?.url || '');
-  deleteGroupBtn.hidden = !isSynced;
-
-  // --- Load settings (sync for titled groups, local for untitled ones) ---
-  (async () => {
-    let settings;
-    if (isSynced) {
-      settings = await getGroupSettings(group.title);
-    } else {
-      const local = await getLocalFallback();
-      const entry = local.untitledGroups[group.id];
-      settings = { pattern: entry?.pattern || null, rules: [] };
-    }
-
-    groupPatternInput.value = settings.pattern || groupDefault;
-
-    for (const rule of settings.rules || []) {
-      ruleList.appendChild(buildRuleRow(group, isSynced, rule, () => saveGroup(group, isSynced, groupPatternInput, ruleList)));
-    }
-
-    // Quick suggestions: open tabs in the group that don't have a rule yet
-    if (isSynced) {
-      const existingMatches = new Set((settings.rules || []).map((r) => r.match));
-      for (const tab of tabs) {
-        const suggestedMatch = defaultMatchForUrl(tab.url);
-        if (existingMatches.has(suggestedMatch)) continue;
-        const qa = quickAddTemplate.content.cloneNode(true);
-        qa.querySelector('.quick-add-title').textContent = tab.title || tab.url;
-        qa.querySelector('.quick-add-btn').addEventListener('click', () => {
-          const row = buildRuleRow(group, isSynced, { match: suggestedMatch, pattern: suggestedMatch }, () => saveGroup(group, isSynced, groupPatternInput, ruleList));
-          ruleList.appendChild(row);
-          saveGroup(group, isSynced, groupPatternInput, ruleList);
-        });
-        quickAddList.appendChild(qa);
-      }
-      if (quickAddList.children.length > 0) quickAddBox.hidden = false;
-    }
-  })();
-
-  groupPatternInput.addEventListener('change', () => saveGroup(group, isSynced, groupPatternInput, ruleList));
-
-  addRuleBtn.addEventListener('click', () => {
-    const row = buildRuleRow(group, isSynced, { match: '', pattern: '' }, () => saveGroup(group, isSynced, groupPatternInput, ruleList));
-    ruleList.appendChild(row);
-  });
-
-  deleteGroupBtn.addEventListener('click', async () => {
-    await deleteGroupSettings(group.title);
-    groupPatternInput.value = groupDefault;
-    ruleList.innerHTML = '';
-  });
-
-  return node;
+async function selectGroup(groupId) {
+  const entry = state.byId.get(groupId);
+  if (!entry) return;
+  state.selectedGroupId = groupId;
+  renderSwitcher(groupId);
+  groupPanel.hidden = false;
+  await openGroup(entry);
 }
 
-function buildRuleRow(group, isSynced, rule, onChange) {
+// Loads (or reloads) one group's rules from storage and paints the whole panel.
+async function openGroup(entry) {
+  panelDot.style.background = GROUP_COLORS[entry.group.color] || '#999';
+  panelTitle.textContent = entry.group.title || '(untitled)';
+  untitledWarning.hidden = entry.isSynced;
+  clearIndicator();
+
+  entry.settings = entry.isSynced
+    ? await getGroupSettings(entry.group.title)
+    : (await getLocalFallback()).untitledGroups[entry.group.id] || { rules: [] };
+
+  addRuleBtn.onclick = () => {
+    ruleList.appendChild(buildRuleRow(entry, { match: '', pattern: '' }));
+  };
+
+  clearGroupBtn.onclick = async () => {
+    if (entry.isSynced) {
+      await deleteGroupSettings(entry.group.title);
+    } else {
+      const local = await getLocalFallback();
+      delete local.untitledGroups[entry.group.id];
+      await setLocalFallback({ untitledGroups: local.untitledGroups });
+    }
+    entry.settings = { rules: [] };
+    showSaved();
+    refreshLists(entry);
+  };
+
+  refreshLists(entry);
+}
+
+// Rebuilds the rule list and the quick-add suggestions from entry.settings,
+// without touching the save indicator (so a "Saved" flash from the mutation
+// that triggered this isn't wiped out immediately after appearing).
+function refreshLists(entry) {
+  const rules = entry.settings?.rules || [];
+
+  ruleList.innerHTML = '';
+  for (const rule of rules) {
+    ruleList.appendChild(buildRuleRow(entry, rule));
+  }
+  rulesEmptyHint.hidden = rules.length > 0;
+
+  quickAddList.innerHTML = '';
+  const existingMatches = new Set(rules.map((r) => r.match));
+  const candidates = entry.tabs
+    .filter((tab) => tab.url && !existingMatches.has(defaultMatchForUrl(tab.url)))
+    .sort((a, b) => (b.id === state.activeTabId ? 1 : 0) - (a.id === state.activeTabId ? 1 : 0));
+
+  for (const tab of candidates) {
+    const suggestedMatch = defaultMatchForUrl(tab.url);
+    const node = quickAddTemplate.content.cloneNode(true);
+    const row = node.querySelector('.quick-add-row');
+    const isCurrent = tab.id === state.activeTabId;
+    node.querySelector('.quick-add-title').textContent = (tab.title || tab.url) + (isCurrent ? ' — current tab' : '');
+    if (isCurrent) row.classList.add('current');
+    node.querySelector('.quick-add-btn').addEventListener('click', async () => {
+      const nextRules = [...(entry.settings.rules || []), { match: suggestedMatch, pattern: suggestedMatch }];
+      await persistRules(entry, nextRules);
+      refreshLists(entry);
+    });
+    quickAddList.appendChild(node);
+  }
+  quickAddBox.hidden = quickAddList.children.length === 0;
+}
+
+function buildRuleRow(entry, rule) {
   const node = ruleTemplate.content.cloneNode(true);
   const li = node.querySelector('.rule-row');
   const matchInput = node.querySelector('.rule-match');
@@ -114,41 +169,74 @@ function buildRuleRow(group, isSynced, rule, onChange) {
   matchInput.value = rule.match || '';
   patternInput.value = rule.pattern || '';
 
-  matchInput.addEventListener('change', onChange);
-  patternInput.addEventListener('change', onChange);
-  deleteBtn.addEventListener('click', () => {
+  const onEdit = async () => {
+    await persistRules(entry, collectRulesFromDom());
+    refreshLists(entry);
+  };
+  matchInput.addEventListener('change', onEdit);
+  patternInput.addEventListener('change', onEdit);
+  deleteBtn.addEventListener('click', async () => {
     li.remove();
-    onChange();
+    await persistRules(entry, collectRulesFromDom());
+    refreshLists(entry);
   });
 
   return node;
 }
 
-async function saveGroup(group, isSynced, groupPatternInput, ruleList) {
-  const pattern = groupPatternInput.value.trim();
-  const rules = Array.from(ruleList.querySelectorAll('.rule-row'))
+function collectRulesFromDom() {
+  return Array.from(ruleList.querySelectorAll('.rule-row'))
     .map((row) => ({
       match: row.querySelector('.rule-match').value.trim(),
       pattern: row.querySelector('.rule-pattern').value.trim()
     }))
     .filter((r) => r.match && r.pattern);
+}
 
-  if (isSynced) {
-    try {
-      await setGroupSettings(group.title, { pattern, rules });
-    } catch (e) {
-      alert('Save failed (likely a storage.sync quota limit): ' + e.message);
+async function persistRules(entry, rules) {
+  try {
+    if (entry.isSynced) {
+      await setGroupSettings(entry.group.title, { rules });
+    } else {
+      const local = await getLocalFallback();
+      local.untitledGroups[entry.group.id] = { rules };
+      await setLocalFallback({ untitledGroups: local.untitledGroups });
     }
-  } else {
-    const local = await getLocalFallback();
-    local.untitledGroups[group.id] = { pattern };
-    await setLocalFallback({ untitledGroups: local.untitledGroups });
+    entry.settings = { rules };
+    showSaved();
+  } catch (e) {
+    showError('Save failed (likely a storage.sync quota limit): ' + e.message);
   }
 }
 
-// Redraw if another device changes settings while the popup is open
-chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'sync') renderGroups();
+function clearIndicator() {
+  clearTimeout(saveIndicatorTimer);
+  saveIndicator.textContent = '';
+  saveIndicator.className = 'save-indicator';
+}
+
+function showSaved() {
+  clearTimeout(saveIndicatorTimer);
+  saveIndicator.textContent = 'Saved ✓';
+  saveIndicator.className = 'save-indicator ok show';
+  saveIndicatorTimer = setTimeout(() => saveIndicator.classList.remove('show'), 1400);
+}
+
+function showError(message) {
+  clearTimeout(saveIndicatorTimer);
+  saveIndicator.textContent = message;
+  saveIndicator.className = 'save-indicator err show';
+}
+
+// If another device changes this group's synced rules while the popup is
+// open, refresh just the open panel — the group/tab list itself is local to
+// this browser and isn't affected by sync.
+chrome.storage.onChanged.addListener(async (changes, area) => {
+  if (area !== 'sync') return;
+  const entry = state.byId.get(state.selectedGroupId);
+  if (!entry || !entry.isSynced) return;
+  entry.settings = await getGroupSettings(entry.group.title);
+  refreshLists(entry);
 });
 
 init();

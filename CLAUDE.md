@@ -35,7 +35,8 @@ extension/               The extension itself (load this folder as "unpacked")
   background.js             Service worker: decides where clicked links go
   content.js                 Content script: intercepts <a href> clicks on the page
   common.js                   Shared storage + pattern-matching helpers
-  popup.html/css/js         Popup UI: on/off toggle, per-group pattern editor
+  popup.html/css/js         Popup UI: on/off toggle, per-tab rule editor with a
+                              group switcher
   icons/                       Toolbar/store icons (16/48/128 px)
 .github/workflows/release.yml  Builds extension/ into a zip and publishes a Release
 README.md, CONTRIBUTING.md, CHANGELOG.md, LICENSE
@@ -57,6 +58,13 @@ first.
   local per browser session and aren't a valid cross-device key). Untitled groups
   fall back to `chrome.storage.local`, scoped to the local `groupId`, because they
   can't be identified reliably across devices.
+- There is no group-wide default pattern — every tab is leashed individually, by
+  matching its current URL against each rule's `match` field
+  (`common.js#resolvePatternForTab`). A tab with no matching rule resolves to `null`
+  and callers must treat that as "leave it alone", not "block everything" — don't
+  reintroduce a group-level fallback pattern without re-reading why it was removed
+  (a tab group routinely mixes unrelated sites, so one pattern for the whole group
+  doesn't hold).
 - Respect `chrome.storage.sync` quotas (8 KB/item, ~100 KB total): don't add
   per-group data that could grow unbounded without a cap.
 

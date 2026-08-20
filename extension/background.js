@@ -11,6 +11,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 });
 
+// Resolves the pattern clicked links must match for this tab, or null if the
+// tab's current page has no rule yet (nothing configured = leave it alone).
 async function resolvePatternFor(tab) {
   if (tab.groupId === undefined || tab.groupId === TAB_GROUP_ID_NONE) return null;
 
@@ -25,7 +27,7 @@ async function resolvePatternFor(tab) {
   // Untitled group: not identifiable cross-device, fall back to local groupId
   const local = await getLocalFallback();
   const entry = local.untitledGroups[tab.groupId];
-  return entry?.pattern || defaultPatternForUrl(tab.url || '');
+  return resolvePatternForTab(entry, tab.url);
 }
 
 async function handleLinkClick(href, tab, modifiers) {
@@ -37,6 +39,12 @@ async function handleLinkClick(href, tab, modifiers) {
   }
 
   const pattern = await resolvePatternFor(tab);
+  if (!pattern) {
+    // No rule covers this tab's current page yet: leave it unleashed.
+    await fallbackOpen(href, tab, modifiers);
+    return;
+  }
+
   const matches = matchesPattern(href, pattern);
   const groupId = tab.groupId;
 

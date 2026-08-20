@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "TabGroupsLeash",
-  "version": "1.0.0",
-  "description": "Keeps clicked links inside the URL pattern of their tab group; links that don't match open in a new tab outside the group, leaving the original page untouched.",
+  "version": "1.1.0",
+  "description": "Keeps clicked links inside the URL pattern you set for each tab; links that don't match open in a new tab outside the group, leaving the original page untouched.",
   "permissions": ["tabGroups", "tabs", "storage"],
   "host_permissions": ["<all_urls>"],
   "background": {

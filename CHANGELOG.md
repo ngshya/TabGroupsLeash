@@ -7,12 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-08-20
+
 ### Changed
 
+- Removed the group-wide "group pattern". A group's leash is now purely a set of
+  per-page rules (match → pattern); a tab whose current page doesn't match any rule
+  is left unleashed (normal browsing) instead of falling back to one pattern for
+  the whole group, which never made sense for groups mixing unrelated sites.
+- Popup now opens directly on the rules for **the group of the tab you're currently
+  on**. When the window has more than one tab group, a row of chips above lets you
+  switch to any other group's rules instead of scrolling through all of them at once.
 - Release workflow now runs on every push to `main` instead of requiring a
-  manually-pushed `vX.Y.Z` tag: it tags the commit and publishes the release
-  itself the first time it sees an unreleased `version` in
-  `extension/manifest.json`, and no-ops otherwise.
+  manually-pushed `vX.Y.Z` tag: it tags the commit and publishes the release itself
+  the first time it sees an unreleased `version` in `extension/manifest.json`, and
+  no-ops otherwise.
+
+### Added
+
+- A **Saved ✓** indicator flashes next to the group title on every successful rule
+  edit; a failed save (e.g. a `storage.sync` quota error) shows the reason there
+  instead of a blocking `alert()`.
+- "Add a rule from an open tab" lists the tab you're currently on first, marked
+  "current tab".
+- "Clear this group's rules" now works for untitled (local-only) groups too, not
+  just synced ones.
 
 ## [1.0.0] - 2026-08-20
 
@@ -29,5 +48,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - GitHub Actions workflow that packages `extension/` into a zip and publishes it as
   a GitHub Release whenever a `vX.Y.Z` tag is pushed.
 
-[Unreleased]: https://github.com/ngshya/TabGroupsLeash/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/ngshya/TabGroupsLeash/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/ngshya/TabGroupsLeash/releases/tag/v1.1.0
 [1.0.0]: https://github.com/ngshya/TabGroupsLeash/releases/tag/v1.0.0
