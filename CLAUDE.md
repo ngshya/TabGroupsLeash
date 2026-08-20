@@ -100,7 +100,13 @@ first.
   and callers must treat that as "leave it alone", not "block everything" — don't
   reintroduce a group-level fallback pattern without re-reading why it was removed
   (a tab group routinely mixes unrelated sites, so one pattern for the whole group
-  doesn't hold).
+  doesn't hold). Known, expected consequence: if a group has 3 pages and rules for
+  only 2 of them, clicking links on the 3rd page is completely unleashed — every
+  link opens normally, nothing gets pushed out. Reported once (2026-08-20) as "not
+  all links get pushed out of the group"; investigated and it's this by-design gap,
+  not a matching bug — `globToRegExp`/`matchesPattern` were traced through and are
+  correct. If it comes up again, get a concrete repro (which rule, which link, what
+  happened) before assuming it's the same thing again.
 - Respect `chrome.storage.sync` quotas (8 KB/item, ~100 KB total): don't add
   per-group data that could grow unbounded without a cap.
 - A rule is `{ match, pattern, openUrl }`. `match` identifies the page (used both
@@ -127,14 +133,22 @@ tight. Read this before changing it:
 - **Titled (synced) groups only.** An untitled group's local `groupId` isn't
   stable across a restart, so there is nothing to recreate it by. Don't try to
   extend this to `untitledGroups` in `storage.local`.
-- **Two moves, both scoped to rules with `openUrl`:** open a background tab (and
-  recreate the group, uncolored, if it doesn't exist anywhere) for any rule whose
-  `match` has zero open tabs; close every open tab beyond the first for any rule
-  whose `match` has more than one. It never touches tabs that don't match any
-  `openUrl` rule's `match` — it does not attempt to enforce "only these tabs may
-  exist in this group". Widening it to close unrelated tabs is a materially more
-  destructive behavior change and needs explicit sign-off from the project owner,
-  not just a plausible-sounding generalization.
+- **Two moves scoped to rules with `openUrl`, plus one opt-in move scoped to any
+  rule:** open a background tab (and recreate the group, uncolored, if it doesn't
+  exist anywhere) for any rule whose `match` has zero open tabs; close every open
+  tab beyond the first for any rule whose `match` has more than one. Both apply
+  unconditionally to any group with ≥1 rule. A third move — closing every open tab
+  in such a group that doesn't match *any* of its rules — only runs when
+  `getCloseUndeclaredTabs()` is true (default **false**; toggled on the manage
+  page). That default-off gate is load-bearing: the project owner explicitly
+  signed off on this exact behavior (2026-08-20, after this file previously said
+  it needed sign-off) specifically as opt-in, not as a new default. Don't flip the
+  default to `true` or remove the setting — if it's ever revisited, that's a
+  decision for the project owner, not an inferred cleanup.
+- Groups with **zero rules** are skipped entirely by the reconcile, regardless of
+  `closeUndeclaredTabs` — there's nothing "declared" to check an unconfigured
+  group's tabs against, so don't read "close undeclared tabs" as "close tabs in
+  groups I haven't set up yet".
 - Respect the global enable/disable toggle (`getEnabled()`) — the reconcile is a
   no-op when the extension is switched off, same as link-leashing.
 

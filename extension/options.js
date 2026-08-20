@@ -14,6 +14,7 @@ const ruleList = document.getElementById('ruleList');
 const quickAddBox = document.getElementById('quickAddBox');
 const quickAddList = document.getElementById('quickAddList');
 const startupDelayInput = document.getElementById('startupDelayInput');
+const closeUndeclaredInput = document.getElementById('closeUndeclaredInput');
 const versionLabel = document.getElementById('versionLabel');
 
 const groupNavItemTemplate = document.getElementById('groupNavItemTemplate');
@@ -50,6 +51,11 @@ async function init() {
     value = Math.min(value, 3600);
     startupDelayInput.value = value;
     await setStartupDelaySeconds(value);
+  });
+
+  closeUndeclaredInput.checked = await getCloseUndeclaredTabs();
+  closeUndeclaredInput.addEventListener('change', () => {
+    setCloseUndeclaredTabs(closeUndeclaredInput.checked);
   });
 
   window.addEventListener('hashchange', () => selectGroupFromHash());

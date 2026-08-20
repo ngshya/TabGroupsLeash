@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-08-20
+
+### Added
+
+- **Close undeclared tabs** (Settings on the manage page, off by default): for a
+  group that already has at least one rule, the startup check can now also close
+  every open tab that doesn't match *any* of that group's `match` fields, instead
+  of only opening missing ones and closing duplicates. Off by default because it
+  can close tabs you opened yourself in that group without ever writing a rule for
+  them.
+
 ## [1.4.0] - 2026-08-20
 
 ### Added
@@ -83,7 +94,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - GitHub Actions workflow that packages `extension/` into a zip and publishes it as
   a GitHub Release whenever a `vX.Y.Z` tag is pushed.
 
-[Unreleased]: https://github.com/ngshya/TabGroupsLeash/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/ngshya/TabGroupsLeash/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/ngshya/TabGroupsLeash/releases/tag/v1.5.0
 [1.4.0]: https://github.com/ngshya/TabGroupsLeash/releases/tag/v1.4.0
 [1.1.0]: https://github.com/ngshya/TabGroupsLeash/releases/tag/v1.1.0
 [1.0.0]: https://github.com/ngshya/TabGroupsLeash/releases/tag/v1.0.0
