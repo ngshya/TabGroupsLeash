@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-08-20
+
+### Fixed
+
+- Shortened `extension/manifest.json`'s `description` to 113 characters — the
+  previous 214-character one was valid manifest JSON (loaded fine unpacked) but
+  the Chrome Web Store rejects any upload over 132. The release workflow now
+  checks this length and fails the build if it's exceeded again.
+
 ## [1.5.0] - 2026-08-20
 
 ### Added
@@ -17,13 +26,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   of only opening missing ones and closing duplicates. Off by default because it
   can close tabs you opened yourself in that group without ever writing a rule for
   them.
-
-### Fixed
-
-- Shortened `extension/manifest.json`'s `description` to 113 characters — the
-  previous 214-character one was valid manifest JSON (loaded fine unpacked) but
-  the Chrome Web Store rejects any upload over 132. The release workflow now
-  checks this length and fails the build if it's exceeded again.
 
 ## [1.4.0] - 2026-08-20
 
@@ -101,7 +103,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - GitHub Actions workflow that packages `extension/` into a zip and publishes it as
   a GitHub Release whenever a `vX.Y.Z` tag is pushed.
 
-[Unreleased]: https://github.com/ngshya/TabGroupsLeash/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/ngshya/TabGroupsLeash/compare/v1.5.1...HEAD
+[1.5.1]: https://github.com/ngshya/TabGroupsLeash/releases/tag/v1.5.1
 [1.5.0]: https://github.com/ngshya/TabGroupsLeash/releases/tag/v1.5.0
 [1.4.0]: https://github.com/ngshya/TabGroupsLeash/releases/tag/v1.4.0
 [1.1.0]: https://github.com/ngshya/TabGroupsLeash/releases/tag/v1.1.0

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TabGroupsLeash",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Keep tab groups on a leash: links that don't match your pattern for that tab open in a new tab outside the group.",
   "permissions": ["tabGroups", "tabs", "storage", "alarms"],
   "host_permissions": ["<all_urls>"],
