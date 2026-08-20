@@ -111,10 +111,10 @@ extension/         The extension itself — load this folder as "unpacked"
 
 ## Releasing
 
-Pushing a tag `vX.Y.Z` that matches the `version` in `extension/manifest.json`
-triggers a GitHub Actions workflow that zips the `extension/` folder and publishes
-it as a GitHub Release. See [CLAUDE.md](./CLAUDE.md) for the full branching and
-release workflow.
+Releases are automatic: bump `version` in `extension/manifest.json`, merge it into
+`main`, and a GitHub Actions workflow zips the `extension/` folder, tags the commit
+`vX.Y.Z`, and publishes it as a GitHub Release — no manual tagging step. See
+[CLAUDE.md](./CLAUDE.md#releases) for the full branching and release workflow.
 
 ## Contributing
 
