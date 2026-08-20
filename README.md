@@ -191,6 +191,11 @@ Releases are automatic: bump `version` in `extension/manifest.json`, merge it in
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
+## Privacy
+
+See [PRIVACY.md](./PRIVACY.md) — TabGroupsLeash collects nothing and has no
+backend; everything it reads stays on your device.
+
 ## License
 
 [MIT](./LICENSE)
