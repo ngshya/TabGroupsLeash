@@ -32,23 +32,40 @@ unzip it, and load the resulting folder the same way.
 
 ## Usage
 
-- Toolbar icon → the switch at the top enables/disables the whole extension
-  (default: on, synced across devices).
-- Opening the popup shows the rules for **the group of the tab you're currently on**.
-  If there's more than one group to choose from, a row of chips above lets you
-  switch to any other group's rules — including groups that **aren't open in this
-  window right now** (closed, or open in another window or device) but still have
-  saved rules, shown with a dashed outline. Their rules stay editable and deletable
-  from there even though the group itself isn't in front of you.
-- Each group's rules are pairs of "if a tab's URL matches X, then links clicked in it
-  must match Y" — add one manually (`+`) or with one click via **Add a rule from an
-  open tab**, which lists every open tab in that group that doesn't have a rule yet
-  (the tab you're currently on is listed first, marked "current tab").
-- Every save (editing a rule, adding one, deleting one) flashes a **Saved ✓**
-  next to the group title so you know it went through; a failed save (e.g. a
-  `storage.sync` quota error) shows the reason there instead.
+The toolbar popup is a quick dashboard; the actual rule editing happens on a full
+**manage page** (more room once you have several groups and rules than a ~300px
+popup could ever offer).
+
+### Popup
+
+- The switch enables/disables the whole extension (default: on, synced across
+  devices).
+- The 🖥️/☀️/🌙 button cycles the **theme**: System (follows your browser/OS), Light,
+  Dark — synced across devices.
+- Below that, every group is listed with its rule count — groups open in this
+  window, plus any other titled group that has saved rules but isn't open here right
+  now (dashed outline). Click one to jump straight to it on the manage page.
+- **Manage rules & settings** opens the manage page (reuses an already-open tab if
+  there is one).
+- The footer shows the installed version.
+
+### Manage page
+
+Opens as its own tab (`options.html`) so there's room for every group side by side
+with its rules, instead of one at a time in a cramped popup.
+
+- Left: every group (same discovery as the popup's list — open in this window, or
+  elsewhere with saved rules). Click one to edit it on the right.
+- Right: that group's rules — pairs of "if a tab's URL matches X, then links clicked
+  in it must match Y" (see [Recovering closed tabs](#recovering-closed-tabs) for the
+  third field). Add one manually (`+`) or with one click via **Add a rule from an
+  open tab**, which lists every open tab in that group that doesn't have a rule yet.
+- Every save (editing a rule, adding one, deleting one) flashes a **Saved ✓** next to
+  the group title so you know it went through; a failed save (e.g. a `storage.sync`
+  quota error) shows the reason there instead.
 - A tab with no matching rule yet isn't leashed — its links behave normally until
   you add one.
+- The **startup check delay** setting (see below) also lives here.
 
 ### Pattern syntax
 
@@ -81,7 +98,7 @@ either a `pattern` (leash links), a reopen URL (guarantee presence), or both.
   click — clear the field afterward if you don't want that for a particular rule.
 - On every actual **browser startup** (not on every popup open, and never mid-session
   — closing a tab on purpose during the day is never undone by this), the extension
-  waits a configurable delay (default **15 seconds**, gear icon in the popup header)
+  waits a configurable delay (default **15 seconds**, under Settings on the manage page)
   for Chrome's own session restore to settle, then checks every group that has at
   least one reopen URL configured:
   - a page with no open tab matching its rule's `match` → reopens it, in the
@@ -121,10 +138,10 @@ recognize "the same tab".
 ### Sync limitations
 
 - **Untitled groups** can't be reliably identified cross-device: their settings stay
-  in `storage.local` on the current device only (a warning is shown in the popup).
+  in `storage.local` on the current device only (a warning is shown on the manage page).
 - `storage.sync` has quotas: 8 KB per item, ~100 KB total, ~120 writes/minute. A
   reasonable number of rules per group won't come close; if it does, saving fails
-  with a warning in the popup.
+  with a warning on the manage page.
 - Renaming a group creates a new entry; the old one stays orphaned in `storage.sync`
   until you delete it manually (✕ button next to the group title).
 - Sync across devices isn't instant — it depends on Chrome's sync cycle, usually a
@@ -145,14 +162,16 @@ recognize "the same tab".
 ## Project layout
 
 ```
-extension/         The extension itself — load this folder as "unpacked"
-  manifest.json     Manifest V3 configuration
-  background.js     Service worker: tab open/move logic, startup reconcile
-  content.js        Intercepts link clicks on the page
-  popup.html/css/js UI to toggle the extension and edit each group's rules
-  common.js         Shared utilities (sync/local storage, pattern matching)
-  icons/            Toolbar and store icons
-.github/workflows/  CI: packages extension/ into a zip on every tagged release
+extension/           The extension itself — load this folder as "unpacked"
+  manifest.json       Manifest V3 configuration
+  background.js       Service worker: tab open/move logic, startup reconcile
+  content.js          Intercepts link clicks on the page
+  common.js           Shared utilities (sync/local storage, pattern matching)
+  theme.css           Shared light/dark design tokens for popup.html + options.html
+  popup.html/css/js   Toolbar popup: on/off, theme, per-group rule counts
+  options.html/css/js Manage page: the actual rule editor, one tab, all groups
+  icons/              Toolbar and store icons
+.github/workflows/    CI: packages extension/ into a zip on every tagged release
 ```
 
 ## Releasing

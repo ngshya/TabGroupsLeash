@@ -38,12 +38,36 @@ extension/               The extension itself (load this folder as "unpacked")
                               plus the startup reconcile (background.js#reconcileGroups)
   content.js                 Content script: intercepts <a href> clicks on the page
   common.js                   Shared storage + pattern-matching helpers
-  popup.html/css/js         Popup UI: on/off toggle, per-tab rule editor with a
-                              group switcher
+  theme.css                   Shared light/dark CSS variables + base resets,
+                                linked by both popup.html and options.html
+  popup.html/css/js         Toolbar popup: on/off, theme cycle, version, and a
+                              per-group rule-count overview — no rule editing here
+  options.html/css/js      Manage page (extension's options_page, opens as a full
+                              tab): the actual rule editor, every group at once
   icons/                       Toolbar/store icons (16/48/128 px)
 .github/workflows/release.yml  Builds extension/ into a zip and publishes a Release
 README.md, CONTRIBUTING.md, CHANGELOG.md, LICENSE
 ```
+
+### Popup vs. options page — don't merge them back
+
+The popup (`popup.html`) is deliberately a thin dashboard: enable/disable, theme,
+version, and a list of groups with rule counts that deep-links into the options
+page. All actual rule editing (add/edit/delete a rule, quick-add, clear a group,
+the startup-delay setting) lives on `options.html`, opened via
+`chrome.runtime.openOptionsPage()` or `popup.js#openManagePage()` (which also
+supports a `#group=<title>` hash to land directly on one group — `options.js`
+reads it on load and on `hashchange`). This split exists because a popup is capped
+at a few hundred px and stops being usable once there are more than a couple of
+groups with several rules each — don't move the editor back into the popup, and
+don't let the popup grow its own duplicate editing UI; extend `options.js` instead.
+
+`popup.js` and `options.js` both duplicate a few small helpers (`buildRuleRow` and
+friends only exist in `options.js` now; the group-discovery logic — open-in-window
+entries plus "elsewhere" titled groups with saved rules — is intentionally
+similar-but-separate in both files, since the popup only needs counts while
+`options.js` needs full editable state). Keep genuinely shared logic in
+`common.js`, not copy-pasted between the two page scripts.
 
 There is no build step, bundler, or package.json — the extension runs straight from
 the files under `extension/`. Keep it that way unless there's a concrete reason
@@ -55,8 +79,17 @@ first.
 - Plain, modern JavaScript (ES2020+), 2-space indentation, semicolons, `const`/`let`,
   `async`/`await`. No transpilation, no external runtime libraries.
 - User-facing strings (popup UI, alerts, README) are in English.
-- `common.js` is loaded by both the service worker (`importScripts`) and the popup
-  (`<script>` tag) — don't add anything to it that assumes one context or the other.
+- `common.js` is loaded by the service worker (`importScripts`) and by both
+  `popup.html` and `options.html` (`<script>` tag) — don't add anything to it that
+  assumes one of those three contexts.
+- Theme: colors live as CSS custom properties in `theme.css` (`:root` = light,
+  overridden under `prefers-color-scheme: dark` and under `[data-theme="dark"]`/
+  `[data-theme="light"]`), applied via `common.js#applyTheme()`. Add new UI with
+  `var(--token)`, never a hardcoded hex — a hardcoded color only shows up correctly
+  in whichever theme you happened to test in. The theme *control* lives only in the
+  popup (`getThemePreference`/`setThemePreference` in `common.js`); `options.js`
+  only applies whatever's stored and listens for `storage.onChanged` to pick up a
+  change live — don't add a second theme switcher there.
 - Group settings are keyed by **group title**, not by `chrome.tabGroups` id (ids are
   local per browser session and aren't a valid cross-device key). Untitled groups
   fall back to `chrome.storage.local`, scoped to the local `groupId`, because they
@@ -84,7 +117,8 @@ tight. Read this before changing it:
 
 - **Startup-only, once per launch.** It runs off `chrome.runtime.onStartup` via a
   single one-shot `chrome.alarms` alarm (delay = `getStartupDelaySeconds()`,
-  default 15s, user-configurable in the popup) — never on an interval, never in
+  default 15s, user-configurable under Settings on the options page) — never on an
+  interval, never in
   response to `chrome.tabGroups.onRemoved` or `chrome.tabs.onRemoved`. Reacting to
   every close during a session would fight the user every time they deliberately
   close a tab or a whole group, which is the opposite of the point. Don't add a

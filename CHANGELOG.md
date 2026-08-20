@@ -7,29 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [1.3.0] - 2026-08-20
+## [1.4.0] - 2026-08-20
 
 ### Added
 
-- The group switcher now also lists every **other** titled group that has saved
-  rules but isn't open in this window right now (closed, or open in another window
-  or device) — shown with a dashed outline. Selecting one opens its rules, still
-  fully editable and deletable, even though the group itself isn't in front of you.
-  Previously such groups' rules were invisible and unreachable from the popup.
+- **New icon** — replaces the plain placeholder.
+- **Light/dark theme.** A cycle button in the popup (System / Light / Dark) applies
+  across both the popup and the manage page, synced across devices.
+- **Popup/manage page split.** The toolbar popup is now a thin dashboard: on/off,
+  theme, installed version in the footer, and every group listed with its rule
+  count. Actual rule editing moved to a new **manage page** (`options.html`, opens
+  as its own tab, reachable via the popup's "Manage rules & settings" button or by
+  clicking a group row to jump straight to it) — a popup stops being usable once
+  there are more than a couple of groups with several rules each; the manage page
+  has room for all of them side by side.
+- The group list (popup and manage page alike) also shows every **other** titled
+  group that has saved rules but isn't open in this window right now (closed, or
+  open in another window or device) — shown with a dashed outline. Selecting one
+  opens its rules, still fully editable and deletable, even though the group
+  itself isn't in front of you. Previously such groups' rules were invisible and
+  unreachable.
 - Rules can now carry a **"Reopen at this URL if missing"** field. Once per actual
   browser startup (never mid-session), after a configurable delay (default 15s,
-  gear icon in the popup header) for Chrome's own session restore to settle, the
-  extension checks every group with at least one reopen URL configured: opens a
-  background tab (recreating the group itself if it's gone entirely) for any page
-  that's missing, and closes duplicate tabs beyond the first for any page that has
-  more than one. Only covers titled (synced) groups. "Add a rule from an open tab"
-  prefills this field with the tab's exact current URL.
+  Settings section on the manage page) for Chrome's own session restore to settle,
+  the extension checks every group with at least one reopen URL configured: opens
+  a background tab (recreating the group itself if it's gone entirely) for any
+  page that's missing, and closes duplicate tabs beyond the first for any page
+  that has more than one. Only covers titled (synced) groups. "Add a rule from an
+  open tab" prefills this field with the tab's exact current URL.
 
 ### Fixed
 
 - Removing the last rule from a group that isn't open in this window now deletes
   its now-empty `storage.sync` entry, instead of leaving an orphaned `{ rules: [] }`
-  behind that would keep showing up in the switcher forever.
+  behind that would keep showing up in the group list forever.
 
 ## [1.1.0] - 2026-08-20
 
@@ -72,7 +83,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - GitHub Actions workflow that packages `extension/` into a zip and publishes it as
   a GitHub Release whenever a `vX.Y.Z` tag is pushed.
 
-[Unreleased]: https://github.com/ngshya/TabGroupsLeash/compare/v1.3.0...HEAD
-[1.3.0]: https://github.com/ngshya/TabGroupsLeash/releases/tag/v1.3.0
+[Unreleased]: https://github.com/ngshya/TabGroupsLeash/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/ngshya/TabGroupsLeash/releases/tag/v1.4.0
 [1.1.0]: https://github.com/ngshya/TabGroupsLeash/releases/tag/v1.1.0
 [1.0.0]: https://github.com/ngshya/TabGroupsLeash/releases/tag/v1.0.0

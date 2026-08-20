@@ -1,0 +1,129 @@
+/* Shared design tokens + base resets for popup.html and options.html.
+   Theme is chosen via common.js#applyTheme(), which sets/clears
+   [data-theme] on <html>; 'system' (no attribute) falls through to the
+   prefers-color-scheme media query below. */
+
+* { box-sizing: border-box; }
+
+:root {
+  --bg: #fafbfc;
+  --panel-bg: #ffffff;
+  --border: #e4e7ec;
+  --dashed-border: #c7ccd6;
+  --text: #1f2430;
+  --text-muted: #4d5566;
+  --text-faint: #7a8194;
+  --text-fainter: #9aa1b1;
+  --accent: #4a90e2;
+  --accent-bg: #eaf2fc;
+  --input-bg: #ffffff;
+  --input-border: #d5d9e0;
+  --hover-bg: #f0f3f9;
+  --icon-btn-bg: #eef0f4;
+  --icon-btn-hover-bg: #e2e5ec;
+  --warning-bg: #fff6e6;
+  --warning-border: #f0dcae;
+  --warning-text: #b8791a;
+  --hint-bg: #f4f6fa;
+  --code-bg: #f0f1f5;
+  --danger: #e25c5c;
+  --success: #1f9d55;
+  --slider-off: #ccc;
+  --focus-ring: rgba(74, 144, 226, .15);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1b1e26;
+    --panel-bg: #242832;
+    --border: #363c48;
+    --dashed-border: #4a5262;
+    --text: #e8eaf0;
+    --text-muted: #b7bfcf;
+    --text-faint: #94a0b4;
+    --text-fainter: #7c8598;
+    --accent: #6aa8f0;
+    --accent-bg: #223350;
+    --input-bg: #1c1f27;
+    --input-border: #3a4150;
+    --hover-bg: #2b3038;
+    --icon-btn-bg: #2c313d;
+    --icon-btn-hover-bg: #363c4a;
+    --warning-bg: #3a2f1a;
+    --warning-border: #5c4a22;
+    --warning-text: #e3b56a;
+    --hint-bg: #262b35;
+    --code-bg: #2a2f3a;
+    --danger: #f0918f;
+    --success: #57d992;
+    --slider-off: #4a5262;
+    --focus-ring: rgba(106, 168, 240, .2);
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #1b1e26;
+  --panel-bg: #242832;
+  --border: #363c48;
+  --dashed-border: #4a5262;
+  --text: #e8eaf0;
+  --text-muted: #b7bfcf;
+  --text-faint: #94a0b4;
+  --text-fainter: #7c8598;
+  --accent: #6aa8f0;
+  --accent-bg: #223350;
+  --input-bg: #1c1f27;
+  --input-border: #3a4150;
+  --hover-bg: #2b3038;
+  --icon-btn-bg: #2c313d;
+  --icon-btn-hover-bg: #363c4a;
+  --warning-bg: #3a2f1a;
+  --warning-border: #5c4a22;
+  --warning-text: #e3b56a;
+  --hint-bg: #262b35;
+  --code-bg: #2a2f3a;
+  --danger: #f0918f;
+  --success: #57d992;
+  --slider-off: #4a5262;
+  --focus-ring: rgba(106, 168, 240, .2);
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+.icon-btn {
+  border: none;
+  background: var(--icon-btn-bg);
+  color: var(--text-faint);
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.icon-btn:hover { background: var(--icon-btn-hover-bg); color: var(--text); }
+
+.field-label {
+  display: block;
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-top: 4px;
+}
+
+.hint {
+  font-size: 10.5px;
+  color: var(--text-fainter);
+  line-height: 1.4;
+}
+
+code {
+  background: var(--code-bg);
+  padding: 1px 3px;
+  border-radius: 3px;
+}
