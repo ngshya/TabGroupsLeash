@@ -1,4 +1,7 @@
 const enabledToggle = document.getElementById('enabledToggle');
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsPanel = document.getElementById('settingsPanel');
+const startupDelayInput = document.getElementById('startupDelayInput');
 const groupSwitcher = document.getElementById('groupSwitcher');
 const emptyState = document.getElementById('emptyState');
 const groupPanel = document.getElementById('groupPanel');
@@ -34,6 +37,19 @@ let saveIndicatorTimer = null;
 async function init() {
   enabledToggle.checked = await getEnabled();
   enabledToggle.addEventListener('change', () => setEnabled(enabledToggle.checked));
+
+  settingsBtn.addEventListener('click', () => {
+    settingsPanel.hidden = !settingsPanel.hidden;
+  });
+  startupDelayInput.value = await getStartupDelaySeconds();
+  startupDelayInput.addEventListener('change', async () => {
+    let value = Math.round(Number(startupDelayInput.value));
+    if (!Number.isFinite(value) || value < 0) value = DEFAULT_STARTUP_DELAY_SECONDS;
+    value = Math.min(value, 3600);
+    startupDelayInput.value = value;
+    await setStartupDelaySeconds(value);
+  });
+
   await loadAndRender();
 }
 
@@ -192,7 +208,11 @@ function refreshLists(entry) {
     node.querySelector('.quick-add-title').textContent = (tab.title || tab.url) + (isCurrent ? ' — current tab' : '');
     if (isCurrent) row.classList.add('current');
     node.querySelector('.quick-add-btn').addEventListener('click', async () => {
-      const nextRules = [...(entry.settings.rules || []), { match: suggestedMatch, pattern: suggestedMatch }];
+      // Prefill openUrl with this tab's exact live URL (query string and all)
+      // so "Use this page" also protects it against being closed by accident,
+      // with no extra step — remove it from the new rule afterward if you
+      // don't want that for this particular page.
+      const nextRules = [...(entry.settings.rules || []), { match: suggestedMatch, pattern: suggestedMatch, openUrl: tab.url }];
       await persistRules(entry, nextRules);
       await afterMutation(entry);
     });
@@ -204,35 +224,62 @@ function refreshLists(entry) {
 function buildRuleRow(entry, rule) {
   const node = ruleTemplate.content.cloneNode(true);
   const li = node.querySelector('.rule-row');
+  const openUrlInput = node.querySelector('.rule-open-url');
   const matchInput = node.querySelector('.rule-match');
   const patternInput = node.querySelector('.rule-pattern');
   const deleteBtn = node.querySelector('.delete-rule');
 
+  openUrlInput.value = rule.openUrl || '';
   matchInput.value = rule.match || '';
   patternInput.value = rule.pattern || '';
 
-  const onEdit = async () => {
-    await persistRules(entry, collectRulesFromDom());
-    await afterMutation(entry);
-  };
+  const onEdit = () => saveRulesFromDom(entry);
+  openUrlInput.addEventListener('change', onEdit);
   matchInput.addEventListener('change', onEdit);
   patternInput.addEventListener('change', onEdit);
   deleteBtn.addEventListener('click', async () => {
     li.remove();
-    await persistRules(entry, collectRulesFromDom());
-    await afterMutation(entry);
+    await saveRulesFromDom(entry);
   });
 
   return node;
 }
 
+function isValidOpenUrl(value) {
+  if (!value) return true; // empty is fine: this rule just has no restore URL
+  try {
+    const u = new URL(value);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch (e) {
+    return false;
+  }
+}
+
 function collectRulesFromDom() {
   return Array.from(ruleList.querySelectorAll('.rule-row'))
     .map((row) => ({
+      openUrl: row.querySelector('.rule-open-url').value.trim(),
       match: row.querySelector('.rule-match').value.trim(),
       pattern: row.querySelector('.rule-pattern').value.trim()
     }))
-    .filter((r) => r.match && r.pattern);
+    // A rule needs at least a page to identify it (match), plus either
+    // something to leash links to (pattern) or a URL to restore (openUrl).
+    .filter((r) => r.match && (r.pattern || r.openUrl));
+}
+
+// Validates every rule currently in the DOM, then persists and refreshes —
+// shared by every edit/delete handler so a typo in one row's URL blocks
+// that save with a clear reason instead of silently storing junk that would
+// only fail later, unattended, during a startup reconcile.
+async function saveRulesFromDom(entry) {
+  const rules = collectRulesFromDom();
+  const invalid = rules.find((r) => r.openUrl && !isValidOpenUrl(r.openUrl));
+  if (invalid) {
+    showError(`"${invalid.openUrl}" isn't a valid http(s) URL`);
+    return;
+  }
+  await persistRules(entry, rules);
+  await afterMutation(entry);
 }
 
 async function persistRules(entry, rules) {

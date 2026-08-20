@@ -7,8 +7,10 @@ Guidance for Claude Code (and other AI coding agents) working in this repository
 TabGroupsLeash is a dependency-free Manifest V3 Chrome extension. It keeps each
 Chrome tab group "on a leash": every group has a URL pattern (and, optionally,
 per-page rules); links clicked inside the group that match the pattern navigate
-normally, links that don't match open in a new tab outside the group instead. See
-[README.md](./README.md) for full user-facing behavior and pattern syntax.
+normally, links that don't match open in a new tab outside the group instead. Rules
+can also carry a URL to reopen if the page they guard goes missing, checked once on
+every browser startup. See [README.md](./README.md) for full user-facing behavior
+and pattern syntax.
 
 ## Branching — always work on `svil`
 
@@ -32,7 +34,8 @@ generic default would suggest working on `main` or on a throwaway branch.
 ```
 extension/               The extension itself (load this folder as "unpacked")
   manifest.json            Manifest V3 config — permissions, entry points, version
-  background.js             Service worker: decides where clicked links go
+  background.js             Service worker: decides where clicked links go,
+                              plus the startup reconcile (background.js#reconcileGroups)
   content.js                 Content script: intercepts <a href> clicks on the page
   common.js                   Shared storage + pattern-matching helpers
   popup.html/css/js         Popup UI: on/off toggle, per-tab rule editor with a
@@ -67,6 +70,39 @@ first.
   doesn't hold).
 - Respect `chrome.storage.sync` quotas (8 KB/item, ~100 KB total): don't add
   per-group data that could grow unbounded without a cap.
+- A rule is `{ match, pattern, openUrl }`. `match` identifies the page (used both
+  for link-leashing and for "is this rule's tab still open"); `pattern` and
+  `openUrl` are each independently optional — a rule only needs `match` plus at
+  least one of the other two. `resolvePatternForTab` already treats a rule with an
+  empty `pattern` the same as "no rule" (null), so a reopen-only rule never
+  leashes links; don't special-case that in background.js's click handler.
+
+## Startup reconcile — design constraints
+
+`background.js#reconcileGroups` (rules with `openUrl` set) is intentionally scoped
+tight. Read this before changing it:
+
+- **Startup-only, once per launch.** It runs off `chrome.runtime.onStartup` via a
+  single one-shot `chrome.alarms` alarm (delay = `getStartupDelaySeconds()`,
+  default 15s, user-configurable in the popup) — never on an interval, never in
+  response to `chrome.tabGroups.onRemoved` or `chrome.tabs.onRemoved`. Reacting to
+  every close during a session would fight the user every time they deliberately
+  close a tab or a whole group, which is the opposite of the point. Don't add a
+  recurring alarm or a close-event listener to "catch up faster" without this
+  being an explicit, discussed change.
+- **Titled (synced) groups only.** An untitled group's local `groupId` isn't
+  stable across a restart, so there is nothing to recreate it by. Don't try to
+  extend this to `untitledGroups` in `storage.local`.
+- **Two moves, both scoped to rules with `openUrl`:** open a background tab (and
+  recreate the group, uncolored, if it doesn't exist anywhere) for any rule whose
+  `match` has zero open tabs; close every open tab beyond the first for any rule
+  whose `match` has more than one. It never touches tabs that don't match any
+  `openUrl` rule's `match` — it does not attempt to enforce "only these tabs may
+  exist in this group". Widening it to close unrelated tabs is a materially more
+  destructive behavior change and needs explicit sign-off from the project owner,
+  not just a plausible-sounding generalization.
+- Respect the global enable/disable toggle (`getEnabled()`) — the reconcile is a
+  no-op when the extension is switched off, same as link-leashing.
 
 ## Releases
 

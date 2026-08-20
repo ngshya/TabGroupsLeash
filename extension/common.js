@@ -21,13 +21,40 @@ function setEnabled(value) {
   });
 }
 
+// --- Startup reconciliation delay (seconds), synced ---
+// How long background.js waits after chrome.runtime.onStartup before
+// checking every group for missing/duplicate tabs, so Chrome's own session
+// restore has time to finish first. See background.js's onStartup listener.
+
+const STARTUP_DELAY_KEY = 'startupDelaySeconds';
+const DEFAULT_STARTUP_DELAY_SECONDS = 15;
+
+function getStartupDelaySeconds() {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get({ [STARTUP_DELAY_KEY]: DEFAULT_STARTUP_DELAY_SECONDS }, (data) => resolve(data[STARTUP_DELAY_KEY]));
+  });
+}
+
+function setStartupDelaySeconds(seconds) {
+  return new Promise((resolve) => {
+    chrome.storage.sync.set({ [STARTUP_DELAY_KEY]: seconds }, resolve);
+  });
+}
+
 // --- Per-group settings, indexed by TITLE (a stable cross-device key) ---
-// Shape: { rules: [{ match, pattern }, ...] }
+// Shape: { rules: [{ match, pattern, openUrl }, ...] }
 //
 // There is no group-wide default pattern: every tab is leashed individually,
 // by matching its current URL against each rule's "match" field. A tab whose
-// URL doesn't match any rule is left alone (normal browser behavior) until a
-// rule is added for it — see resolvePatternForTab below.
+// URL doesn't match any rule (or matches one with no "pattern") is left alone
+// (normal browser behavior) — see resolvePatternForTab below.
+//
+// "openUrl", if set, is the exact URL background.js reopens on browser
+// startup when no open tab in the group matches "match" anymore (e.g. the
+// tab was closed by accident, or a crash lost it) — see
+// background.js#reconcileGroups. "match" is reused as the "is it still
+// there" check, so a rule only needs "pattern" (link leashing), only
+// "openUrl" (presence guarantee), or both.
 
 function getGroupSettings(title) {
   const key = groupKey(title);
@@ -62,7 +89,7 @@ async function getAllGroupTitles() {
 // Same per-tab-rules shape as synced group settings, just keyed by the
 // browser-local numeric groupId instead of a title.
 
-const LOCAL_DEFAULTS = { untitledGroups: {} }; // { [groupId]: { rules: [{ match, pattern }, ...] } }
+const LOCAL_DEFAULTS = { untitledGroups: {} }; // { [groupId]: { rules: [{ match, pattern, openUrl }, ...] } }
 
 function getLocalFallback() {
   return new Promise((resolve) => chrome.storage.local.get(LOCAL_DEFAULTS, resolve));
@@ -120,9 +147,10 @@ function findRuleForTabUrl(groupSettings, tabUrl) {
 
 // Resolves the pattern to apply to links clicked in a tab, given the tab's
 // current URL and its group's (synced, or local-fallback) settings. Returns
-// null when no rule covers this tab yet — callers should treat that as
-// "unleashed" rather than "blocks everything".
+// null when no rule covers this tab yet, or the matching rule has no
+// "pattern" (an openUrl-only, presence-guarantee rule) — callers should
+// treat that as "unleashed" rather than "blocks everything".
 function resolvePatternForTab(groupSettings, tabUrl) {
   const rule = findRuleForTabUrl(groupSettings, tabUrl);
-  return rule ? rule.pattern : null;
+  return rule && rule.pattern ? rule.pattern : null;
 }

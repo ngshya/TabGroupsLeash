@@ -24,6 +24,29 @@ h1 {
   margin: 0;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-panel {
+  background: #fff;
+  border: 1px solid #e4e7ec;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.delay-input {
+  width: 70px;
+  padding: 5px 7px;
+  border: 1px solid #d5d9e0;
+  border-radius: 5px;
+  font-size: 12px;
+  margin-top: 2px;
+}
+
 .switch {
   position: relative;
   display: inline-block;
@@ -212,14 +235,34 @@ input:checked + .slider::before { transform: translateX(18px); }
 
 .rule-row {
   display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 7px;
+  border: 1px solid #e4e7ec;
+  border-radius: 6px;
+  background: #fbfbfc;
+  margin-bottom: 6px;
+}
+
+.rule-row-top {
+  display: flex;
   align-items: center;
-  gap: 4px;
-  margin-bottom: 5px;
+  gap: 6px;
+}
+.rule-row-top .mini-label { flex: 1; min-width: 0; }
+
+.mini-label {
+  font-size: 9.5px;
+  color: #9aa1b1;
+  text-transform: uppercase;
+  letter-spacing: .02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .rule-row input {
-  flex: 1;
-  min-width: 0;
+  width: 100%;
   padding: 5px 7px;
   border: 1px solid #d5d9e0;
   border-radius: 5px;

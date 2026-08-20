@@ -69,6 +69,30 @@ unzip it, and load the resulting folder the same way.
 - Tab in a group, link does **not** match the pattern → it always opens in a new
   tab outside the group; the original tab's page never changes.
 
+## Recovering closed tabs
+
+Any rule can also carry a **"Reopen at this URL if missing"** field — an exact URL
+(not a pattern) to reopen automatically if the page it's guarding isn't open in the
+group anymore. This is separate from link leashing: a rule only needs a `match` plus
+either a `pattern` (leash links), a reopen URL (guarantee presence), or both.
+
+- **Add a rule from an open tab** ("Use this page") prefills it with that tab's exact
+  current URL, so protecting a tab against being closed by accident is a single
+  click — clear the field afterward if you don't want that for a particular rule.
+- On every actual **browser startup** (not on every popup open, and never mid-session
+  — closing a tab on purpose during the day is never undone by this), the extension
+  waits a configurable delay (default **15 seconds**, gear icon in the popup header)
+  for Chrome's own session restore to settle, then checks every group that has at
+  least one reopen URL configured:
+  - a page with no open tab matching its rule's `match` → reopens it, in the
+    background, in that group (recreating the group itself, with a default color, if
+    it isn't open anywhere at all);
+  - a page with **more than one** open tab matching its rule's `match` (e.g.
+    duplicates from Chrome's own crash recovery) → closes the extras, keeping the
+    leftmost tab.
+- Only works for **titled (synced) groups** — an untitled group's identity doesn't
+  survive a restart, so there's nothing stable to recreate it by.
+
 ## Cross-device sync
 
 Settings use `chrome.storage.sync`, Chrome's built-in synced storage (only requires
@@ -113,13 +137,17 @@ recognize "the same tab".
   direct user interaction, or from inside an iframe, are not covered.
 - `javascript:`, `mailto:`, `tel:` links, and links with a `download` attribute are
   never intercepted (native browser behavior applies).
+- The startup reconcile checks each rule independently: if two rules in the same
+  group have overlapping `match` patterns that can both cover the same tab, the
+  duplicate-closing step can behave oddly for that tab. Keep a group's `match`
+  patterns non-overlapping if you're using reopen URLs.
 
 ## Project layout
 
 ```
 extension/         The extension itself — load this folder as "unpacked"
   manifest.json     Manifest V3 configuration
-  background.js     Service worker: tab open/move logic
+  background.js     Service worker: tab open/move logic, startup reconcile
   content.js        Intercepts link clicks on the page
   popup.html/css/js UI to toggle the extension and edit each group's rules
   common.js         Shared utilities (sync/local storage, pattern matching)

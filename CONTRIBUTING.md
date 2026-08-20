@@ -28,6 +28,17 @@ git pull origin svil
 There's nothing to install and nothing to compile — the extension runs straight
 from the files in `extension/`.
 
+### Testing the startup reconcile
+
+`background.js#reconcileGroups` only runs off `chrome.runtime.onStartup`, which
+doesn't fire on a plain extension reload — restarting the whole browser for every
+test is slow. To trigger it on demand instead: `chrome://extensions` → click
+**service worker** under TabGroupsLeash to open its console → run
+`reconcileGroups()` directly, or `chrome.alarms.create('tgl-startup-reconcile', {delayInMinutes: 0.02})`
+to also exercise the alarm path. Set a short **startup check delay** (gear icon
+in the popup) while iterating so an actual browser restart doesn't require a
+15-second wait.
+
 ## Code style
 
 - Plain, modern JavaScript (ES2020+), no transpilation, no external libraries.

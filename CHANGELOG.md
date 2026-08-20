@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [1.2.0] - 2026-08-20
+## [1.3.0] - 2026-08-20
 
 ### Added
 
@@ -16,6 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   or device) — shown with a dashed outline. Selecting one opens its rules, still
   fully editable and deletable, even though the group itself isn't in front of you.
   Previously such groups' rules were invisible and unreachable from the popup.
+- Rules can now carry a **"Reopen at this URL if missing"** field. Once per actual
+  browser startup (never mid-session), after a configurable delay (default 15s,
+  gear icon in the popup header) for Chrome's own session restore to settle, the
+  extension checks every group with at least one reopen URL configured: opens a
+  background tab (recreating the group itself if it's gone entirely) for any page
+  that's missing, and closes duplicate tabs beyond the first for any page that has
+  more than one. Only covers titled (synced) groups. "Add a rule from an open tab"
+  prefills this field with the tab's exact current URL.
 
 ### Fixed
 
@@ -64,7 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - GitHub Actions workflow that packages `extension/` into a zip and publishes it as
   a GitHub Release whenever a `vX.Y.Z` tag is pushed.
 
-[Unreleased]: https://github.com/ngshya/TabGroupsLeash/compare/v1.2.0...HEAD
-[1.2.0]: https://github.com/ngshya/TabGroupsLeash/releases/tag/v1.2.0
+[Unreleased]: https://github.com/ngshya/TabGroupsLeash/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/ngshya/TabGroupsLeash/releases/tag/v1.3.0
 [1.1.0]: https://github.com/ngshya/TabGroupsLeash/releases/tag/v1.1.0
 [1.0.0]: https://github.com/ngshya/TabGroupsLeash/releases/tag/v1.0.0
