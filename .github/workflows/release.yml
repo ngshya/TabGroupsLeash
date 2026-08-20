@@ -1,0 +1,73 @@
+name: Release
+
+# Push a tag matching vX.Y.Z (that matches "version" in extension/manifest.json)
+# to build extension/ into a zip and publish it as a GitHub Release.
+#
+# Manual runs (workflow_dispatch) only build the zip and attach it as a workflow
+# artifact, for testing the packaging step without cutting a release.
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate manifest.json
+        run: jq empty extension/manifest.json
+
+      - name: Read version from manifest.json
+        id: manifest
+        run: |
+          version=$(jq -r '.version' extension/manifest.json)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Verify tag matches manifest version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          tag="${GITHUB_REF#refs/tags/v}"
+          manifest="${{ steps.manifest.outputs.version }}"
+          if [ "$tag" != "$manifest" ]; then
+            echo "::error::Tag v$tag does not match extension/manifest.json version $manifest"
+            exit 1
+          fi
+
+      - name: Check required files
+        run: |
+          for f in manifest.json background.js content.js common.js popup.html popup.css popup.js icons/icon16.png icons/icon48.png icons/icon128.png; do
+            if [ ! -f "extension/$f" ]; then
+              echo "::error::Missing extension/$f"
+              exit 1
+            fi
+          done
+
+      - name: Build zip
+        id: zip
+        run: |
+          name="TabGroupsLeash-${{ steps.manifest.outputs.version }}.zip"
+          cd extension
+          zip -r "../$name" . -x '*.DS_Store'
+          cd ..
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.zip.outputs.name }}
+          path: ${{ steps.zip.outputs.name }}
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.zip.outputs.name }}
+          generate_release_notes: true

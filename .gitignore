@@ -1,0 +1,16 @@
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Packaged extension builds (produced by the release workflow, not committed)
+*.zip
+/dist/
+
+# Node (only relevant if tooling is added later, e.g. linting)
+node_modules/
+npm-debug.log*
+
+# Local Chrome extension key, if you ever pack a .crx locally
+*.pem
