@@ -18,6 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   can close tabs you opened yourself in that group without ever writing a rule for
   them.
 
+### Fixed
+
+- Shortened `extension/manifest.json`'s `description` to 113 characters — the
+  previous 214-character one was valid manifest JSON (loaded fine unpacked) but
+  the Chrome Web Store rejects any upload over 132. The release workflow now
+  checks this length and fails the build if it's exceeded again.
+
 ## [1.4.0] - 2026-08-20
 
 ### Added
