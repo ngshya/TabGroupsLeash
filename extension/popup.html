@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TabGroupsLeash</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <h1>TabGroupsLeash</h1>
+    <label class="switch" title="Enable/disable the extension (synced)">
+      <input type="checkbox" id="enabledToggle">
+      <span class="slider"></span>
+    </label>
+  </header>
+
+  <main id="groupsContainer">
+    <p id="emptyState" class="empty">No tab groups in this window.</p>
+  </main>
+
+  <footer>
+    <p class="hint">Pattern: <code>*</code> is a wildcard (e.g. <code>*://example.com/*</code>) or
+    <code>regex:...</code>. Settings for <strong>untitled</strong> groups stay on this device only.</p>
+  </footer>
+
+  <template id="groupTemplate">
+    <section class="group">
+      <div class="group-header">
+        <span class="dot"></span>
+        <span class="group-title"></span>
+        <button class="icon-btn delete-group" title="Delete this group's synced settings">✕</button>
+      </div>
+      <p class="untitled-warning" hidden>Give this group a title to sync these settings across devices. For now they're saved on this browser only.</p>
+      <label class="field-label">Group pattern (default for all tabs)</label>
+      <input type="text" class="group-pattern" placeholder="pattern">
+
+      <div class="rules-header">
+        <label class="field-label">Page-specific rules</label>
+        <button class="icon-btn add-rule" title="Add a manual rule">+</button>
+      </div>
+      <ul class="rule-list"></ul>
+
+      <div class="quick-add" hidden>
+        <label class="field-label">Add a rule from an open tab</label>
+        <ul class="quick-add-list"></ul>
+      </div>
+    </section>
+  </template>
+
+  <template id="ruleTemplate">
+    <li class="rule-row">
+      <input type="text" class="rule-match" placeholder="if the tab's URL matches...">
+      <input type="text" class="rule-pattern" placeholder="then links must match...">
+      <button class="icon-btn delete-rule" title="Remove rule">✕</button>
+    </li>
+  </template>
+
+  <template id="quickAddTemplate">
+    <li class="quick-add-row">
+      <span class="quick-add-title"></span>
+      <button class="quick-add-btn">Use this page</button>
+    </li>
+  </template>
+
+  <script src="common.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
