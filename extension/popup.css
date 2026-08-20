@@ -86,6 +86,20 @@ input:checked + .slider::before { transform: translateX(18px); }
   font-weight: 600;
 }
 
+/* Groups that have saved rules but aren't open in this window right now */
+.switcher-chip.not-open {
+  border-style: dashed;
+  color: #9aa1b1;
+}
+.switcher-chip.not-open.selected {
+  border-color: #4a90e2;
+  color: #1f2430;
+}
+.dot.unknown {
+  background: transparent;
+  border: 1.5px solid #b7bdc9;
+}
+
 /* --- Active group panel --- */
 
 .group {
@@ -156,6 +170,16 @@ input:checked + .slider::before { transform: translateX(18px); }
   color: #b8791a;
   background: #fff6e6;
   border: 1px solid #f0dcae;
+  border-radius: 5px;
+  padding: 5px 7px;
+  margin: 0 0 6px;
+}
+
+.not-open-hint {
+  font-size: 11px;
+  color: #4d5566;
+  background: #f0f3f9;
+  border: 1px dashed #c7ccd6;
   border-radius: 5px;
   padding: 5px 7px;
   margin: 0 0 6px;

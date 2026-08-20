@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-08-20
+
+### Added
+
+- The group switcher now also lists every **other** titled group that has saved
+  rules but isn't open in this window right now (closed, or open in another window
+  or device) — shown with a dashed outline. Selecting one opens its rules, still
+  fully editable and deletable, even though the group itself isn't in front of you.
+  Previously such groups' rules were invisible and unreachable from the popup.
+
+### Fixed
+
+- Removing the last rule from a group that isn't open in this window now deletes
+  its now-empty `storage.sync` entry, instead of leaving an orphaned `{ rules: [] }`
+  behind that would keep showing up in the switcher forever.
+
 ## [1.1.0] - 2026-08-20
 
 ### Changed
@@ -48,6 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - GitHub Actions workflow that packages `extension/` into a zip and publishes it as
   a GitHub Release whenever a `vX.Y.Z` tag is pushed.
 
-[Unreleased]: https://github.com/ngshya/TabGroupsLeash/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/ngshya/TabGroupsLeash/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/ngshya/TabGroupsLeash/releases/tag/v1.2.0
 [1.1.0]: https://github.com/ngshya/TabGroupsLeash/releases/tag/v1.1.0
 [1.0.0]: https://github.com/ngshya/TabGroupsLeash/releases/tag/v1.0.0

@@ -17,7 +17,7 @@
   <nav id="groupSwitcher" class="group-switcher" hidden></nav>
 
   <main id="panelContainer">
-    <p id="emptyState" class="empty" hidden>No tab groups in this window.</p>
+    <p id="emptyState" class="empty" hidden>No tab groups in this window, and no saved rules for any group yet.</p>
 
     <section id="groupPanel" class="group" hidden>
       <div class="group-header">
@@ -27,6 +27,7 @@
         <button class="icon-btn" id="clearGroupBtn" title="Clear this group's rules">✕</button>
       </div>
       <p class="untitled-warning" id="untitledWarning" hidden>Give this group a title to sync its rules across devices. For now they're saved on this browser only.</p>
+      <p class="not-open-hint" id="notOpenHint" hidden>This group isn't open in this window right now (closed, or open in another window/device) — its rules still apply wherever a tab in a group with this title is open.</p>
 
       <div class="rules-header">
         <label class="field-label">Rules for this group</label>

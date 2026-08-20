@@ -35,8 +35,11 @@ unzip it, and load the resulting folder the same way.
 - Toolbar icon → the switch at the top enables/disables the whole extension
   (default: on, synced across devices).
 - Opening the popup shows the rules for **the group of the tab you're currently on**.
-  If the window has more than one tab group, a row of chips above lets you switch to
-  any other group's rules.
+  If there's more than one group to choose from, a row of chips above lets you
+  switch to any other group's rules — including groups that **aren't open in this
+  window right now** (closed, or open in another window or device) but still have
+  saved rules, shown with a dashed outline. Their rules stay editable and deletable
+  from there even though the group itself isn't in front of you.
 - Each group's rules are pairs of "if a tab's URL matches X, then links clicked in it
   must match Y" — add one manually (`+`) or with one click via **Add a rule from an
   open tab**, which lists every open tab in that group that doesn't have a rule yet
