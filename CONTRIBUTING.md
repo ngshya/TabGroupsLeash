@@ -48,10 +48,10 @@ from the files in `extension/`.
 
 ## Releasing
 
-Maintainers cut a release by merging `svil` into `main`, bumping `version` in
-`extension/manifest.json`, and pushing a matching `vX.Y.Z` tag. See
-[CLAUDE.md](./CLAUDE.md#releases) for details — this triggers the GitHub Actions
-workflow that builds and publishes the release zip.
+Maintainers cut a release by bumping `version` in `extension/manifest.json` and
+merging `svil` into `main`. That's it — a GitHub Actions workflow tags the merge
+commit and publishes the release zip automatically; there's no manual tagging step.
+See [CLAUDE.md](./CLAUDE.md#releases) for details.
 
 ## Reporting issues
 

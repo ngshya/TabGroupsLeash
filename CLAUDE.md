@@ -62,21 +62,32 @@ first.
 
 ## Releases
 
-Releases are built by [`.github/workflows/release.yml`](./.github/workflows/release.yml):
+Releases are fully automated by
+[`.github/workflows/release.yml`](./.github/workflows/release.yml) — there is no
+manual tagging step, on purpose: this repo is often driven from a sandboxed Claude
+Code Remote session whose GitHub credentials can push branches but are blocked from
+pushing tags directly. The workflow creates the tag itself, running with the Actions
+job's own `GITHUB_TOKEN` (not the session's credentials), so it isn't affected by
+that restriction.
+
+To cut a release:
 
 1. Bump `version` in `extension/manifest.json` (semver).
 2. Update `CHANGELOG.md` (Keep a Changelog format) with a new dated entry.
-3. Merge `svil` into `main`.
-4. Tag the resulting commit on `main` as `vX.Y.Z`, matching the manifest version
-   exactly, and push the tag: `git tag vX.Y.Z && git push origin vX.Y.Z`.
+3. Merge `svil` into `main` (or push directly to `main`).
 
-Pushing that tag triggers the workflow, which validates `extension/manifest.json`,
-zips the contents of `extension/` (so `manifest.json` sits at the zip's root, ready
-for Chrome Web Store upload or "Load unpacked"), and publishes it as a GitHub
-Release named after the tag with the zip attached. A tag whose version doesn't
-match the manifest fails the workflow on purpose — fix one or the other before
-retagging. `workflow_dispatch` runs build and attach the zip as a workflow artifact
-without publishing a release, for testing the packaging step.
+That's it. On every push to `main`, the workflow reads `version` from
+`extension/manifest.json` and checks whether a `vX.Y.Z` tag for it already exists:
+
+- If it doesn't: the workflow validates `extension/manifest.json`, zips the
+  contents of `extension/` (so `manifest.json` sits at the zip's root, ready for
+  Chrome Web Store upload or "Load unpacked"), tags the pushed commit `vX.Y.Z`, and
+  publishes a GitHub Release named after the tag with the zip attached.
+- If it does (the push to `main` didn't bump the version): the workflow no-ops.
+
+`workflow_dispatch` re-runs the same check/release logic on demand — useful to
+retry a failed release, or to release the current `main` without waiting for
+another push.
 
 ## Testing changes locally
 

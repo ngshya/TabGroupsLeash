@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Release workflow now runs on every push to `main` instead of requiring a
+  manually-pushed `vX.Y.Z` tag: it tags the commit and publishes the release
+  itself the first time it sees an unreleased `version` in
+  `extension/manifest.json`, and no-ops otherwise.
+
 ## [1.0.0] - 2026-08-20
 
 ### Added
